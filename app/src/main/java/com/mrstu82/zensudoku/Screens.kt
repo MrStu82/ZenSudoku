@@ -176,7 +176,7 @@ fun MenuScreen(go: (Screen) -> Unit) {
             }
             Spacer(Modifier.height(28.dp))
             var level by remember { mutableStateOf(Difficulty.MEDIUM) }
-            Chips(Difficulty.entries, level, { "${it.kanji}\n${it.label.substringBefore(' ')}" }) { level = it }
+            DifficultyPicker(level) { level = it }
             Spacer(Modifier.height(12.dp))
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 ZenButton("Begin Journey", Ic.ARROW) { go(Screen.Game) }
@@ -190,7 +190,33 @@ fun MenuScreen(go: (Screen) -> Unit) {
     }
 }
 
-/** Segmented pill row (menu difficulty, records filter). */
+/** Menu difficulty: labelled row of tiles; the chosen one is filled indigo with a vermilion mark. */
+@Composable
+fun DifficultyPicker(selected: Difficulty, pick: (Difficulty) -> Unit) {
+    val z = LocalZen.current; val shape = RoundedCornerShape(4.dp)
+    val plain = mapOf(Difficulty.EASY to "Easy", Difficulty.MEDIUM to "Medium", Difficulty.HARD to "Hard", Difficulty.IMPOSSIBLE to "Expert")
+    Column {
+        T("DIFFICULTY", 11.sp, 600, z.textSecondary, spacing = .3.em, modifier = Modifier.padding(start = 2.dp, bottom = 8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Difficulty.entries.forEach { d ->
+                val on = d == selected; val ink = if (on) z.boardBg else z.textPrimary
+                Column(
+                    Modifier.weight(1f).clip(shape).background(if (on) z.accent else z.glass, shape)
+                        .border(if (on) 2.dp else 1.dp, if (on) z.accent else z.gridLine, shape)
+                        .tap { pick(d) }.padding(vertical = 10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    T(d.kanji, 22.sp, 500, ink)
+                    T(d.label.substringBefore(' '), 11.sp, 500, ink.copy(alpha = .8f))
+                    T(plain.getValue(d), 13.sp, 700, ink, modifier = Modifier.padding(top = 2.dp))
+                    Box(Modifier.padding(top = 6.dp).size(5.dp).background(if (on) Shu else Color.Transparent, RoundedCornerShape(50)))
+                }
+            }
+        }
+    }
+}
+
+/** Segmented pill row (records filter). */
 @Composable
 fun <K> Chips(items: List<K>, selected: K, label: (K) -> String, pick: (K) -> Unit) {
     val z = LocalZen.current; val shape = RoundedCornerShape(4.dp)
