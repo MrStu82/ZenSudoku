@@ -7,6 +7,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -27,6 +34,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -53,7 +61,7 @@ fun T(
 
 /** Seigaiha (blue-sea-wave) pattern: overlapping fans of concentric arcs, 5% ink. */
 @Composable
-fun ZenBackground() {
+fun ZenBackground(season: Int = 0) {
     val z = LocalZen.current
     Canvas(Modifier.fillMaxSize()) {
         val r = 28.dp.toPx(); val ink = z.textPrimary.copy(alpha = .05f); val st = Stroke(1.dp.toPx())
@@ -79,17 +87,22 @@ fun ZenBackground() {
                 drawLine(fibre, p, p + Offset(kotlin.math.cos(a) * l, kotlin.math.sin(a) * l), .6f * density)
             }
         }
+        // Season: a few drifting petals or leaves in the accent colour.
+        if (season > 0) repeat(14) {
+            val p = Offset(rnd.nextFloat() * size.width, rnd.nextFloat() * size.height); val l = (5 + rnd.nextFloat() * 5) * density
+            rotate(rnd.nextFloat() * 360f, p) { drawOval(z.accent.copy(alpha = .16f), p - Offset(l, l / 2), Size(2 * l, l)) }
+        }
     }
 }
 
-/** Brush ensō: one open stroke that thins and dries out towards its tail. */
+/** Brush ensō: one open stroke that thins and dries out towards its tail; [progress] draws it in. */
 @Composable
-fun Enso(modifier: Modifier) {
+fun Enso(modifier: Modifier, progress: Float = 1f) {
     val ink = LocalZen.current.textPrimary
     Canvas(modifier) {
         val n = 140; val start = 115f; val sweep = 318f; val maxW = size.minDimension * .085f
         val inset = maxW; val box = Size(size.width - 2 * inset, size.height - 2 * inset)
-        for (i in 0 until n) {
+        for (i in 0 until (n * progress).toInt()) {
             val t = i / n.toFloat()
             val w = maxW * (1f - .7f * t) * (.92f + .08f * kotlin.math.sin(t * 23f))
             drawArc(
@@ -100,19 +113,23 @@ fun Enso(modifier: Modifier) {
     }
 }
 
+/** Track name and speaker cycle the five elements (then silence); play/pause stops the music. */
 @Composable
-fun PlayerBar(track: String, playing: Boolean) {
-    val z = LocalZen.current
+fun PlayerBar(app: ZenApp) {
+    val z = LocalZen.current; val t = Tracks.getOrNull(app.settings.track)
+    val playing = t != null && app.musicOn && app.settings.music > 0
     // Unobtrusive: no surface, no divider, sits below the status bar at 45% ink.
     Row(
         Modifier.fillMaxWidth().statusBarsPadding().padding(top = 8.dp).height(32.dp).padding(horizontal = 24.dp).alpha(.45f),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        T(track, 12.sp, 500, spacing = .1.em)
-        if (playing) T("  ·  playing", 10.sp, 400, z.textSecondary)
+        Row(Modifier.tap { app.nextTrack() }, verticalAlignment = Alignment.CenterVertically) {
+            T(t?.let { "${it.name} ${it.kanji}" } ?: "Silence 無", 12.sp, 500, spacing = .1.em)
+            if (playing) T("  ·  playing", 10.sp, 400, z.textSecondary)
+        }
         Spacer(Modifier.weight(1f))
-        SvgIcon(Ic.SPEAKER, z.textPrimary, 16.dp, stroke = 1.5f, modifier = Modifier.padding(6.dp))
-        SvgIcon(if (playing) Ic.PAUSE else Ic.PLAY, z.textPrimary, 16.dp, stroke = 1.5f, modifier = Modifier.padding(6.dp))
+        SvgIcon(Ic.SPEAKER, z.textPrimary, 16.dp, stroke = 1.5f, modifier = Modifier.tap { app.nextTrack() }.padding(6.dp))
+        SvgIcon(if (playing) Ic.PAUSE else Ic.PLAY, z.textPrimary, 16.dp, stroke = 1.5f, modifier = Modifier.tap { app.toggleMusic() }.padding(6.dp))
     }
 }
 
@@ -153,40 +170,87 @@ fun ReturnButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
 
 fun clock(s: Int) = "%02d:%02d".format(s / 60, s % 60)
 
+
+/** Scrolling glass card with a brush title, used by Options, How to Play and Records. */
+@Composable
+fun Page(kanji: String, title: String, back: () -> Unit, scroll: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
+    val z = LocalZen.current
+    Box(Modifier.fillMaxSize().navigationBarsPadding().padding(24.dp), contentAlignment = Alignment.Center) {
+        GlassCard(Modifier.widthIn(max = 440.dp).fillMaxWidth().heightIn(max = (LocalConfiguration.current.screenHeightDp * .9f).dp)) {
+            Column(Modifier.padding(horizontal = 28.dp, vertical = 28.dp)) {
+                T(kanji, 34.sp, family = Brush, align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                T(title, 10.sp, 500, z.textSecondary, spacing = .4.em, align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(20.dp))
+                Column(Modifier.weight(1f, fill = false).then(if (scroll) Modifier.verticalScroll(rememberScrollState()) else Modifier), content = content)
+                Spacer(Modifier.height(20.dp))
+                ReturnButton(back)
+            }
+        }
+    }
+}
+
 // ---------- menu ----------
 
 @Composable
-fun MenuScreen(go: (Screen) -> Unit) {
-    Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-        Column(Modifier.widthIn(max = 384.dp).fillMaxWidth()) {
-            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(Modifier.size(150.dp), contentAlignment = Alignment.Center) {
-                    Enso(Modifier.fillMaxSize())
-                    T("禅", 64.sp, family = Brush)
-                }
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    T("Zen Sudoku", 34.sp, family = Brush)
-                    Spacer(Modifier.width(10.dp))
-                    // Hanko seal, like a signature on a scroll.
-                    Box(Modifier.size(26.dp).background(Shu, RoundedCornerShape(3.dp)), contentAlignment = Alignment.Center) {
-                        T("数独", 9.sp, 700, Color(0xFFFAF6EC))
+fun MenuScreen(app: ZenApp) {
+    var recall by remember { mutableStateOf(false) }
+    Box(Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize().navigationBarsPadding().padding(24.dp), contentAlignment = Alignment.Center) {
+            Column(Modifier.widthIn(max = 384.dp).fillMaxWidth().verticalScroll(rememberScrollState())) {
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(Modifier.size(150.dp), contentAlignment = Alignment.Center) {
+                        Enso(Modifier.fillMaxSize())
+                        T("禅", 64.sp, family = Brush)
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        T("Zen Sudoku", 34.sp, family = Brush)
+                        Spacer(Modifier.width(10.dp))
+                        // Hanko seal, like a signature on a scroll.
+                        Box(Modifier.size(26.dp).background(Shu, RoundedCornerShape(3.dp)), contentAlignment = Alignment.Center) {
+                            T("数独", 9.sp, 700, Color(0xFFFAF6EC))
+                        }
                     }
                 }
-            }
-            Spacer(Modifier.height(28.dp))
-            var level by remember { mutableStateOf(Difficulty.MEDIUM) }
-            DifficultyPicker(level) { level = it }
-            Spacer(Modifier.height(12.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                ZenButton("Begin Journey", Ic.ARROW) { go(Screen.Game) }
-                ZenButton("Daily Seed · ${dailySeed()}", Ic.SUN) { go(Screen.Game) }
-                ZenButton("Recall Seed", Ic.ARROW) {}
-                ZenButton("How to Play", Ic.RULES) {}
-                ZenButton("Records", Ic.STAR) { go(Screen.Records) }
-                ZenButton("Options", Ic.OPTIONS) {}
+                Spacer(Modifier.height(28.dp))
+                val level = app.settings.level
+                DifficultyPicker(level) { app.update(app.settings.copy(level = it)) }
+                Spacer(Modifier.height(12.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    app.resumable?.let { g -> ZenButton("Resume · ${g.puzzle.difficulty.kanji} ${clock(g.seconds)}", Ic.PLAY) { app.screen = Screen.Game } }
+                    ZenButton("Begin Journey", Ic.ARROW) { app.start(generate(randomSeed(), level)) }
+                    val streak = app.streak.takeIf { it > 0 }?.let { " · $it 日" } ?: ""
+                    ZenButton("Daily Seed 日$streak", Ic.SUN) { app.start(generate(dailySeed(), Difficulty.MEDIUM), daily = true) }
+                    ZenButton("Recall Seed", Ic.ARROW) { recall = true }
+                    ZenButton("How to Play", Ic.RULES) { app.open(Screen.HowTo) }
+                    ZenButton("Records", Ic.STAR) { app.screen = Screen.Records }
+                    ZenButton("Options", Ic.OPTIONS) { app.open(Screen.Options) }
+                }
             }
         }
+        if (recall) RecallSeed(app) { recall = false }
+    }
+}
+
+/** Type a friend's 8-character seed to play the same board at the chosen level. */
+@Composable
+private fun RecallSeed(app: ZenApp, close: () -> Unit) {
+    val z = LocalZen.current; var seed by remember { mutableStateOf("") }
+    BackHandler(onBack = close)
+    Veil("呼", "RECALL SEED") {
+        val shape = RoundedCornerShape(4.dp)
+        BasicTextField(
+            seed, { t -> seed = t.uppercase().filter { it in SEED_CHARS }.take(8) },
+            Modifier.fillMaxWidth().clip(shape).background(z.glass, shape).border(1.dp, z.gridLine, shape).padding(16.dp),
+            textStyle = TextStyle(z.textPrimary, 22.sp, FontWeight.W700, fontFamily = Mono, letterSpacing = .2.em, textAlign = TextAlign.Center),
+            singleLine = true, cursorBrush = SolidColor(z.accent),
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
+        )
+        T("Level: ${app.settings.level.label}", 12.sp, 500, z.textSecondary, align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+        Box(Modifier.alpha(if (seed.length == 8) 1f else .35f)) {
+            ZenButton("Begin", Ic.ARROW) { if (seed.length == 8) { close(); app.start(generate(seed, app.settings.level)) } }
+        }
+        ReturnButton(close)
     }
 }
 
@@ -194,7 +258,6 @@ fun MenuScreen(go: (Screen) -> Unit) {
 @Composable
 fun DifficultyPicker(selected: Difficulty, pick: (Difficulty) -> Unit) {
     val z = LocalZen.current; val shape = RoundedCornerShape(4.dp)
-    val plain = mapOf(Difficulty.EASY to "Easy", Difficulty.MEDIUM to "Medium", Difficulty.HARD to "Hard", Difficulty.IMPOSSIBLE to "Expert")
     Column {
         T("DIFFICULTY", 11.sp, 600, z.textSecondary, spacing = .3.em, modifier = Modifier.padding(start = 2.dp, bottom = 8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -208,7 +271,7 @@ fun DifficultyPicker(selected: Difficulty, pick: (Difficulty) -> Unit) {
                 ) {
                     T(d.kanji, 22.sp, 500, ink)
                     T(d.label.substringBefore(' '), 11.sp, 500, ink.copy(alpha = .8f))
-                    T(plain.getValue(d), 13.sp, 700, ink, modifier = Modifier.padding(top = 2.dp))
+                    T(d.plain, 13.sp, 700, ink, modifier = Modifier.padding(top = 2.dp))
                     Box(Modifier.padding(top = 6.dp).size(5.dp).background(if (on) Shu else Color.Transparent, RoundedCornerShape(50)))
                 }
             }
@@ -216,7 +279,7 @@ fun DifficultyPicker(selected: Difficulty, pick: (Difficulty) -> Unit) {
     }
 }
 
-/** Segmented pill row (records filter). */
+/** Segmented pill row. */
 @Composable
 fun <K> Chips(items: List<K>, selected: K, label: (K) -> String, pick: (K) -> Unit) {
     val z = LocalZen.current; val shape = RoundedCornerShape(4.dp)
@@ -227,105 +290,81 @@ fun <K> Chips(items: List<K>, selected: K, label: (K) -> String, pick: (K) -> Un
                 Modifier.weight(1f).clip(RoundedCornerShape(3.dp)).background(if (on) z.accent else Color.Transparent)
                     .tap { pick(k) }.padding(vertical = 10.dp),
                 contentAlignment = Alignment.Center,
-            ) { T(label(k), 12.sp, 500, if (on) Color(0xFFFAF6EC) else z.textSecondary, align = TextAlign.Center) }
+            ) { T(label(k), 12.sp, 500, if (on) z.boardBg else z.textSecondary, align = TextAlign.Center) }
         }
     }
 }
 
-// ---------- game ----------
+// ---------- options ----------
 
 @Composable
-fun GameScreen(g: GameState, best: Int?) {
+private fun Section(title: String) =
+    T(title, 10.sp, 600, LocalZen.current.textSecondary, spacing = .3.em, modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
+
+/** A quiet on/off row: a small ink dot fills when on. */
+@Composable
+private fun Toggle(label: String, note: String, on: Boolean, set: (Boolean) -> Unit) {
     val z = LocalZen.current
-    BoxWithConstraints(Modifier.fillMaxSize().navigationBarsPadding().padding(horizontal = 24.dp, vertical = 24.dp)) {
-        // Web: grid is 95vw capped at min(420px, 44vh).
-        val side = minOf(maxWidth, 420.dp, (LocalConfiguration.current.screenHeightDp * .44f).dp)
-        Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-            Row(Modifier.widthIn(max = 440.dp).fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Row(Modifier.weight(1f)) { SvgIcon(Ic.PAUSE, z.textPrimary, 22.dp, stroke = 1.5f, modifier = Modifier.padding(8.dp).alpha(.6f)) }
-                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                    T("MISTAKES: ${g.mistakes}/${g.mistakeLimit}", 9.sp, 700, spacing = .1.em, modifier = Modifier.alpha(.5f))
-                    Spacer(Modifier.height(4.dp))
-                    T(clock(g.seconds), 28.sp, 500)
-                    if (best != null) T("BEST ${clock(best)}", 9.sp, 700, spacing = .1.em, modifier = Modifier.alpha(.5f))
-                }
-                Row(Modifier.weight(1f), horizontalArrangement = Arrangement.End) {
-                    SvgIcon(Ic.BLOOM, Matcha, 24.dp, stroke = 1.6f, modifier = Modifier.tap { g.fillSingles() }.padding(8.dp).alpha(if (g.singles().isEmpty()) .25f else .9f))
-                    SvgIcon(Ic.UNDO, z.textPrimary, 22.dp, stroke = 1.5f, modifier = Modifier.tap { g.undo() }.padding(8.dp).alpha(.6f))
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            Board(g, side)
-            Spacer(Modifier.height(8.dp))
-            Numpad(g, side)
-            Spacer(Modifier.weight(1f))
-            // Seed: faint, bottom-right, tap to copy.
-            Row(
-                Modifier.widthIn(max = 440.dp).fillMaxWidth().padding(horizontal = 8.dp).alpha(.4f),
-                horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically,
-            ) {
-                T("SEED: ${g.puzzle.seed} [${g.puzzle.difficulty.name}]", 9.sp, 700, spacing = .1.em)
-                SvgIcon(Ic.COPY, z.textPrimary, 12.dp, modifier = Modifier.padding(8.dp))
-            }
+    Row(Modifier.fillMaxWidth().tap { set(!on) }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            T(label, 15.sp, 500)
+            T(note, 11.sp, 400, z.textSecondary)
         }
+        Box(
+            Modifier.size(22.dp).border(1.5.dp, if (on) z.accent else z.gridLine, RoundedCornerShape(50)).padding(5.dp)
+                .background(if (on) z.accent else Color.Transparent, RoundedCornerShape(50)),
+        )
     }
 }
 
 @Composable
-fun Board(g: GameState, side: Dp) {
+fun OptionsScreen(app: ZenApp) {
+    val s = app.settings; fun set(n: Settings) = app.update(n)
+    val vol = listOf("Off", "Low", "Mid", "High")
+    Page("設定", "OPTIONS", { app.screen = app.back }) {
+        Section("THEME")
+        Chips(Themes.keys.toList(), s.theme, { Themes.getValue(it).label }) { set(s.copy(theme = it)) }
+        Section("SEASON")
+        Chips(listOf(0, 1, 2), s.season, { listOf("None", "Sakura 桜", "Momiji 紅葉")[it] }) { set(s.copy(season = it)) }
+        Section("TRACK")
+        Chips((0 until Tracks.size).toList() + -1, s.track, { Tracks.getOrNull(it)?.kanji ?: "無" }) { set(s.copy(track = it)) }
+        Section("MUSIC")
+        Chips((0..3).toList(), s.music, { vol[it] }) { set(s.copy(music = it)) }
+        Section("SOUND EFFECTS")
+        Chips((0..3).toList(), s.sfx, { vol[it] }) { set(s.copy(sfx = it)) }
+        Section("MISTAKE LIMIT")
+        Chips(listOf(3, 5, 0), s.mistakeLimit, { if (it == 0) "None" else "$it" }) { set(s.copy(mistakeLimit = it)) }
+        Section("GUIDE")
+        Toggle("Possibility dots", "Pips show how many digits still fit", s.dots) { set(s.copy(dots = it)) }
+        Toggle("Clarity border", "Outline cells with a single answer", s.clarity) { set(s.copy(clarity = it)) }
+        Toggle("Bloom", "Button that fills every single", s.bloom) { set(s.copy(bloom = it)) }
+        Toggle("Auto-tidy notes", "A placed digit clears it from nearby notes", s.tidy) { set(s.copy(tidy = it)) }
+        Toggle("Calm mode", "Hide timer and mistakes; scores saved untimed", s.calm) { set(s.copy(calm = it)) }
+        Section("HANDS")
+        Toggle("Soft haptics", "A light tick on placement", s.haptics) { set(s.copy(haptics = it)) }
+        Toggle("Larger digits", "Bigger numbers on board and pad", s.large) { set(s.copy(large = it)) }
+        Toggle("Left-handed pad", "Mode, notes and erase on the left", s.left) { set(s.copy(left = it)) }
+    }
+}
+
+// ---------- how to play ----------
+
+/** A 3x3 slice of board: digits ('.' empty), with optional highlighted cells and a matcha-outlined cell. */
+@Composable
+private fun Mini(cells: String, lit: Set<Int> = emptySet(), clear: Int = -1, notes: Map<Int, String> = emptyMap()) {
     val z = LocalZen.current; val shape = RoundedCornerShape(3.dp)
-    Box(
-        Modifier.size(side).shadow(8.dp, shape, ambientColor = Color.Black.copy(alpha = .1f), spotColor = Color.Black.copy(alpha = .2f))
-            .background(z.boardBg, shape).border(2.dp, z.gridMajor, shape).padding(2.dp)
-            .drawBehind {
-                val c = size.width / 9
-                for (i in 1 until 9) {
-                    val major = i % 3 == 0
-                    val col = if (major) z.gridMajor else z.gridLine; val w = (if (major) 2 else 1).dp.toPx()
-                    drawLine(col, Offset(i * c, 0f), Offset(i * c, size.height), w)
-                    drawLine(col, Offset(0f, i * c), Offset(size.width, i * c), w)
-                }
-            },
-    ) {
-        Column {
-            for (r in 0 until 9) Row(Modifier.weight(1f)) {
-                for (c in 0 until 9) Cell(g, r, c, Modifier.weight(1f).fillMaxHeight())
-            }
-        }
-    }
-}
-
-@Composable
-private fun Cell(g: GameState, r: Int, c: Int, modifier: Modifier) {
-    val z = LocalZen.current; g.version
-    val v = g.current[r][c]; val given = g.puzzle.givens[r][c] != 0
-    val sel = g.selected == r * 9 + c
-    val wrong = v != 0 && !given && v != g.puzzle.solution[r][c]
-    val s = g.selected; val sr = (s ?: 0) / 9; val sc = (s ?: 0) % 9
-    val peer = s != null && (sr == r || sc == c || (sr / 3 == r / 3 && sc / 3 == c / 3))
-    val same = s != null && v != 0 && v == g.current[sr][sc]
-    val single = v == 0 && g.notes[r][c].isEmpty() && g.candidates(r, c).size == 1
-    val bg = when {
-        wrong -> Shu.copy(alpha = .16f)
-        sel -> z.selectionBg
-        same -> z.sameNumBg
-        peer -> z.textPrimary.copy(alpha = .04f)
-        given -> z.prefilledBg
-        else -> Color.Transparent
-    }
-    // Single-candidate cells get a soft inner border ("inner clarity").
-    val glow = if (single) Modifier.padding(2.dp).border(1.dp, Matcha.copy(alpha = .6f), RoundedCornerShape(3.dp)) else Modifier
-    Box(modifier.background(bg).tap { g.selected = r * 9 + c }, contentAlignment = Alignment.Center) {
-        Box(Modifier.fillMaxSize().then(glow))
-        when {
-            v != 0 && given -> T("$v", 20.sp, 800, z.textPrimary)
-            v != 0 -> T("$v", 20.sp, 400, if (wrong) Shu else z.accent)
-            // Up to 4 pencil notes, one per quadrant, in entry order.
-            g.notes[r][c].isNotEmpty() -> Column(Modifier.fillMaxSize().padding(3.dp)) {
-                val ns = g.notes[r][c].toList()
-                for (qr in 0 until 2) Row(Modifier.weight(1f)) {
-                    for (qc in 0 until 2) Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                        ns.getOrNull(qr * 2 + qc)?.let { T("$it", 10.sp, 500, z.textSecondary) }
+    Column(Modifier.size(96.dp).background(z.boardBg, shape).border(1.5.dp, z.gridMajor, shape).padding(1.5.dp)) {
+        for (r in 0 until 3) Row(Modifier.weight(1f)) {
+            for (c in 0 until 3) {
+                val i = r * 3 + c; val ch = cells[i]
+                Box(
+                    Modifier.weight(1f).fillMaxHeight().background(if (i in lit) z.selectionBg else Color.Transparent).border(.5.dp, z.gridLine)
+                        .then(if (i == clear) Modifier.padding(2.dp).border(1.dp, Matcha.copy(alpha = .7f), RoundedCornerShape(3.dp)) else Modifier),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    when {
+                        ch != '.' -> T("$ch", 15.sp, 700)
+                        i in notes -> T(notes.getValue(i), 8.sp, 500, z.textSecondary)
                     }
                 }
             }
@@ -334,94 +373,80 @@ private fun Cell(g: GameState, r: Int, c: Int, modifier: Modifier) {
 }
 
 @Composable
-fun Numpad(g: GameState, width: Dp) {
-    val z = LocalZen.current; val counts = g.counts()
-    val sel = g.selected?.takeIf { g.current[it / 9][it % 9] == 0 }
-    val allowed = sel?.let { g.candidates(it / 9, it % 9) }
-    val keys: List<Any> = (1..9).toList() + listOf("mode", "note", 0)
-    Column(Modifier.width(width), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        keys.chunked(6).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { k ->
-                    val shape = RoundedCornerShape(4.dp)
-                    val active = k == "note" && g.noteMode
-                    val done = k is Int && k != 0 && counts[k] >= 9
-                    val blocked = k is Int && k != 0 && allowed != null && k !in allowed
-                    Box(
-                        Modifier.weight(1f).aspectRatio(1f).alpha(if (done || blocked) .3f else 1f).clip(shape)
-                            .background(if (active) z.accent else z.glass, shape).border(1.dp, z.gridLine, shape)
-                            .tap { g.press(k) },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        when (k) {
-                            0 -> SvgIcon(Ic.ERASE, Shu, 20.dp, stroke = 1.5f)
-                            "note" -> SvgIcon(Ic.PENCIL, if (active) z.boardBg else z.textSecondary, 20.dp, stroke = 1.5f)
-                            "mode" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                SvgIcon(Ic.MODE, z.textSecondary, 20.dp, stroke = 1.5f, modifier = Modifier.alpha(.7f))
-                                T("MODE", 7.sp, 600, z.textSecondary, modifier = Modifier.padding(top = 4.dp).alpha(.6f))
-                            }
-                            else -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                T("$k", 22.sp, 500)
-                                T("${9 - counts[k as Int]}", 8.sp, 600, modifier = Modifier.alpha(.6f))
-                            }
-                        }
-                    }
-                }
-            }
+private fun Lesson(title: String, body: String, art: @Composable () -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        art()
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            T(title, 15.sp, 700)
+            T(body, 12.sp, 400, LocalZen.current.textSecondary)
+        }
+    }
+}
+
+@Composable
+fun HowToScreen(back: () -> Unit) {
+    Page("道", "HOW TO PLAY", back) {
+        Lesson("One of each", "Fill every row, column and 3×3 box with 1 to 9, each digit once.") { Mini("53.6.98.7", lit = setOf(2, 4)) }
+        Lesson("Choose a cell, then a digit", "Or switch MODE to pick a digit first and tap cells to place it.") { Mini("1.3.5.789", lit = setOf(1)) }
+        Lesson("Notes", "The pencil key writes up to four small notes in a cell.") { Mini("12..5.7.9", notes = mapOf(2 to "3 6", 3 to "4 6", 5 to "3 8")) }
+        Lesson("Clarity", "A soft green border marks a cell with only one possible digit; Bloom fills them all.") { Mini("12345.789", clear = 5) }
+        Lesson("Gentle help", "The lantern reveals one cell. Mistakes blush and fade; three ends the game unless you change the limit.") {
+            Box(Modifier.size(96.dp), contentAlignment = Alignment.Center) { SvgIcon(Ic.HINT, LocalZen.current.textPrimary, 48.dp, stroke = .75f) }
+        }
+        Lesson("Seeds", "Every board has an 8-character seed. Share it, or recall one, to play the same puzzle.") {
+            Box(Modifier.size(96.dp), contentAlignment = Alignment.Center) { T("K7Q2\nM9XA", 16.sp, 700, family = Mono, align = TextAlign.Center) }
         }
     }
 }
 
 // ---------- records ----------
 
-class Score(val seed: String, val difficulty: Difficulty, val seconds: Int, val date: String)
-class Stats(val started: Int, val won: Int, val streak: Int)
-
 @Composable
-fun RecordsScreen(scores: List<Score>, stats: Stats, back: () -> Unit) {
-    val z = LocalZen.current
-    Box(Modifier.fillMaxSize().navigationBarsPadding().padding(24.dp), contentAlignment = Alignment.Center) {
-        Box(Modifier.widthIn(max = 440.dp).fillMaxWidth()) {
-            GlassCard(Modifier.fillMaxWidth().heightIn(max = (LocalConfiguration.current.screenHeightDp * .9f).dp)) {
-                Column(Modifier.padding(32.dp)) {
-                    T("記録", 34.sp, family = Brush, align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-                    T("RECORDS", 10.sp, 500, z.textSecondary, spacing = .4.em, align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-                    Spacer(Modifier.height(24.dp))
-                    val rate = if (stats.started > 0) Math.round(stats.won * 100f / stats.started) else 0
-                    Row(Modifier.fillMaxWidth().alpha(.6f), horizontalArrangement = Arrangement.SpaceAround) {
-                        T("Wins: ${stats.won}", 12.sp, 700); T("Streak: ${stats.streak}", 12.sp, 700); T("Win Rate: $rate%", 12.sp, 700)
+fun RecordsScreen(app: ZenApp) {
+    val z = LocalZen.current; val stats = app.stats
+    var level by remember { mutableStateOf<Difficulty?>(null) }
+    val fmt = remember { java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.UK) }
+    Page("記録", "RECORDS", { app.screen = Screen.Menu }, scroll = false) {
+        Row(Modifier.fillMaxWidth().alpha(.6f), horizontalArrangement = Arrangement.SpaceAround) {
+            T("Played: ${stats.started}", 12.sp, 700); T("Won: ${stats.won}", 12.sp, 700)
+            T("Streak: ${app.streak}", 12.sp, 700); T("Longest: ${stats.longest}", 12.sp, 700)
+        }
+        Spacer(Modifier.height(16.dp))
+        // Best (clean runs only) and average (all timed runs) per level.
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Difficulty.entries.forEach { d ->
+                val timed = app.scores.filter { it.difficulty == d && !it.untimed }
+                val best = timed.filter { it.clean }.minOfOrNull { it.seconds }
+                val avg = timed.takeIf { it.isNotEmpty() }?.map { it.seconds }?.average()?.toInt()
+                Column(
+                    Modifier.weight(1f).clip(RoundedCornerShape(3.dp)).background(z.textPrimary.copy(alpha = if (d == level) .1f else .045f)).padding(vertical = 10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    T(d.plain.uppercase(), 8.sp, 700, spacing = .1.em, modifier = Modifier.alpha(.5f))
+                    T(best?.let { clock(it) } ?: "–", 13.sp, 600)
+                    T("avg ${avg?.let { clock(it) } ?: "–"}", 9.sp, 500, modifier = Modifier.alpha(.5f))
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Chips(listOf(null) + Difficulty.entries, level, { it?.kanji ?: "All" }) { level = it }
+        Spacer(Modifier.height(12.dp))
+        val list = app.scores.filter { level == null || it.difficulty == level }.sortedWith(compareBy({ it.untimed }, { it.seconds })).take(50)
+        if (list.isEmpty()) T("No journeys finished yet.", 13.sp, 400, z.textSecondary, align = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(16.dp))
+        LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            itemsIndexed(list) { i, s ->
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(3.dp)).background(z.textPrimary.copy(alpha = .045f)).padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        T("#${i + 1} ${s.seed}", 12.sp, 700, modifier = Modifier.alpha(.3f))
+                        val tags = listOfNotNull(s.difficulty.plain.uppercase(), "日 DAILY".takeIf { s.daily }, "HINTED".takeIf { s.hinted }, "UNTIMED".takeIf { s.untimed })
+                        T(tags.joinToString(" · "), 9.sp, 700, modifier = Modifier.alpha(.6f))
+                        T(fmt.format(java.util.Date(s.at)), 8.sp, 500, modifier = Modifier.alpha(.4f))
                     }
-                    Spacer(Modifier.height(16.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Difficulty.entries.forEach { d ->
-                            val best = scores.filter { it.difficulty == d }.minOfOrNull { it.seconds }
-                            Column(
-                                Modifier.weight(1f).clip(RoundedCornerShape(3.dp)).background(z.textPrimary.copy(alpha = .045f)).padding(vertical = 10.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ) {
-                                T(d.label.substringBefore(' ').uppercase(), 8.sp, 700, spacing = .1.em, modifier = Modifier.alpha(.5f))
-                                T(best?.let { "%d:%02d".format(it / 60, it % 60) } ?: "–", 13.sp, 600)
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(16.dp))
-                    LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        itemsIndexed(scores.sortedBy { it.seconds }.take(30)) { i, s ->
-                            Row(
-                                Modifier.fillMaxWidth().clip(RoundedCornerShape(3.dp)).background(z.textPrimary.copy(alpha = .045f)).padding(horizontal = 12.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Column {
-                                    T("#${i + 1} ${s.seed}", 12.sp, 700, modifier = Modifier.alpha(.3f))
-                                    T(s.difficulty.name, 9.sp, 700, modifier = Modifier.alpha(.6f))
-                                    T(s.date, 8.sp, 500, modifier = Modifier.alpha(.4f))
-                                }
-                                T("%d:%02d".format(s.seconds / 60, s.seconds % 60), 14.sp, 600)
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(24.dp))
-                    ReturnButton(back)
+                    T(clock(s.seconds), 14.sp, 600, modifier = Modifier.alpha(if (s.clean) 1f else .45f))
                 }
             }
         }

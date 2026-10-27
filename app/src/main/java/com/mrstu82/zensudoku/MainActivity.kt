@@ -1,7 +1,10 @@
 package com.mrstu82.zensudoku
 
+import android.graphics.Color as AColor
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
@@ -9,113 +12,111 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
+import java.time.LocalDate
 
-enum class Screen { Menu, Game, Records }
+enum class Screen { Menu, Game, Records, Options, HowTo }
 
-class GameState(val puzzle: Puzzle) {
-    val current = List(9) { r -> puzzle.givens[r].copyOf() }
-    val notes = List(9) { List(9) { mutableSetOf<Int>() } }
-    var selected by mutableStateOf<Int?>(null)
-    var noteMode by mutableStateOf(false)
-    var mistakes by mutableIntStateOf(0)
-    var seconds by mutableIntStateOf(0)
-    val mistakeLimit = 3
-    var version by mutableIntStateOf(0)
-        private set
-    private val history = ArrayDeque<Pair<List<IntArray>, List<List<Set<Int>>>>>()
+/** App-wide state: settings, saved records and the game in progress, all backed by [Repo]. */
+class ZenApp(private val repo: Repo, val audio: Audio) {
+    private val saved = repo.load()
+    var settings by mutableStateOf(saved.settings); private set
+    var scores by mutableStateOf(saved.scores); private set
+    var stats by mutableStateOf(saved.stats); private set
+    var game by mutableStateOf(saved.resume?.let { GameState.decode(it) }); private set
+    var screen by mutableStateOf(Screen.Menu)
+    /** Where Options and How to Play return to. */
+    var back = Screen.Menu
+    /** Player-bar pause; per session only. */
+    var musicOn by mutableStateOf(true); private set
+    private var recorded: GameState? = null
 
-    fun counts(): IntArray { version; return IntArray(10).also { n -> current.forEach { r -> r.forEach { n[it]++ } } } }
+    fun today() = LocalDate.now().toEpochDay()
 
-    fun press(k: Any) {
-        if (k == "note") { noteMode = !noteMode; return }
-        if (k is Int) input(k)
+    /** The daily streak only counts while unbroken (last daily solved today or yesterday). */
+    val streak get() = if (stats.lastDaily >= today() - 1) stats.streak else 0
+
+    val resumable get() = game?.takeIf { !it.solved && !it.lost }
+
+    fun update(s: Settings) { settings = s; repo.saveSettings(s); audio.apply(s, musicOn) }
+    fun toggleMusic() { musicOn = !musicOn; audio.apply(settings, musicOn) }
+    fun nextTrack() = update(settings.copy(track = if (settings.track + 1 >= Tracks.size) -1 else settings.track + 1))
+
+    fun open(s: Screen) { if (s == Screen.Options || s == Screen.HowTo) back = screen; screen = s }
+
+    fun start(p: Puzzle, daily: Boolean = false) {
+        game = GameState(p, daily); repo.started(); repo.saveResume(null); refresh(); screen = Screen.Game
     }
 
-    fun input(n: Int) {
-        val i = selected ?: return; val r = i / 9; val c = i % 9
-        if (puzzle.givens[r][c] != 0) return
-        history.addLast(current.map { it.copyOf() } to notes.map { row -> row.map { it.toSet() } })
-        when {
-            n == 0 -> { current[r][c] = 0; notes[r][c].clear() }
-            noteMode -> { current[r][c] = 0; if (!notes[r][c].remove(n) && notes[r][c].size < 4) notes[r][c].add(n) }
-            else -> { if (n != puzzle.solution[r][c]) mistakes++; current[r][c] = n; notes[r][c].clear() }
-        }
-        version++
+    fun quit() { game = null; repo.saveResume(null); screen = Screen.Menu }
+
+    fun win(g: GameState) {
+        if (recorded === g) return
+        recorded = g
+        repo.won(Score(g.puzzle.seed, g.puzzle.difficulty, g.seconds, System.currentTimeMillis(), g.hints > 0, settings.calm, g.daily), today())
+        repo.saveResume(null); refresh()
     }
 
-    /** Digits not yet used in the cell's row, column or box. */
-    fun candidates(r: Int, c: Int): Set<Int> {
-        version
-        val used = (0 until 9).flatMap { listOf(current[r][it], current[it][c], current[r / 3 * 3 + it / 3][c / 3 * 3 + it % 3]) }
-        return (1..9).toSet() - used.toSet()
+    /** Fastest clean time for this exact seed and level. */
+    fun best(p: Puzzle) = scores.filter { it.seed == p.seed && it.difficulty == p.difficulty && it.clean }.minOfOrNull { it.seconds }
+
+    fun stop() {
+        game?.let { it.paused = true }
+        repo.saveResume(resumable?.encode()); audio.release()
     }
 
-    fun singles() = (0 until 81).filter { current[it / 9][it % 9] == 0 && candidates(it / 9, it % 9).size == 1 }
-
-    /** "Breath of clarity": fill every cell that has exactly one candidate. */
-    fun fillSingles() {
-        val s = singles().ifEmpty { return }
-        history.addLast(current.map { it.copyOf() } to notes.map { row -> row.map { it.toSet() } })
-        s.forEach { i -> current[i / 9][i % 9] = candidates(i / 9, i % 9).single(); notes[i / 9][i % 9].clear() }
-        version++
-    }
-
-    fun undo() {
-        val (cur, nts) = history.removeLastOrNull() ?: return
-        cur.forEachIndexed { r, row -> row.copyInto(current[r]) }
-        nts.forEachIndexed { r, row -> row.forEachIndexed { c, s -> notes[r][c].clear(); notes[r][c].addAll(s) } }
-        version++
-    }
+    private fun refresh() = repo.load().let { scores = it.scores; stats = it.stats }
 }
 
 class MainActivity : ComponentActivity() {
+    private lateinit var app: ZenApp
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        // Phase-1 prototype: `--es proto game|records` opens a screen with fixture data for screenshots.
-        val start = when (intent.getStringExtra("proto")) { "game" -> Screen.Game; "records" -> Screen.Records; else -> Screen.Menu }
+        // Settings load synchronously, so the saved theme paints the very first frame.
+        app = ZenApp(Repo(this), Audio(this))
+        paint(zen(app.settings))
         setContent {
-            var screen by remember { mutableStateOf(start) }
-            val game = remember { Proto.game() }
-            CompositionLocalProvider(LocalZen provides Themes.getValue("classic")) {
-                Box(Modifier.fillMaxSize().background(LocalZen.current.bgBase)) {
-                    ZenBackground()
+            val z = zen(app.settings)
+            LaunchedEffect(z) { paint(z) }
+            BackHandler(app.screen != Screen.Menu) {
+                when (app.screen) {
+                    Screen.Game -> app.game?.let { if (it.paused || it.solved || it.lost) app.screen = Screen.Menu else it.paused = true }
+                    Screen.Options, Screen.HowTo -> app.screen = app.back
+                    else -> app.screen = Screen.Menu
+                }
+            }
+            CompositionLocalProvider(LocalZen provides z) {
+                Box(Modifier.fillMaxSize().background(z.bgBase)) {
+                    ZenBackground(app.settings.season)
                     Column(Modifier.fillMaxSize()) {
-                        PlayerBar("Wind 風", playing = true)
-                        when (screen) {
-                            Screen.Menu -> MenuScreen { screen = it }
-                            Screen.Game -> GameScreen(game, best = 372)
-                            Screen.Records -> RecordsScreen(Proto.scores, Proto.stats) { screen = Screen.Menu }
+                        PlayerBar(app)
+                        when (app.screen) {
+                            Screen.Menu -> MenuScreen(app)
+                            Screen.Game -> app.game?.let { GameScreen(app, it) } ?: MenuScreen(app)
+                            Screen.Records -> RecordsScreen(app)
+                            Screen.Options -> OptionsScreen(app)
+                            Screen.HowTo -> HowToScreen { app.screen = app.back }
                         }
                     }
                 }
             }
         }
     }
-}
 
-/** Fixture state for the phase-1 screenshots only. */
-object Proto {
-    fun game() = GameState(generate("K7Q2M9XA", Difficulty.MEDIUM)).apply {
-        val empty = (0 until 81).filter { puzzle.givens[it / 9][it % 9] == 0 }
-        empty.take(7).forEach { selected = it; input(puzzle.solution[it / 9][it % 9]) }
-        selected = empty[9]; noteMode = true
-        listOf(2, 5, 8).forEach { input(it) }
-        noteMode = false
-        val wrong = empty[11]; selected = wrong; input(puzzle.solution[wrong / 9][wrong % 9] % 9 + 1)
-        selected = empty.first { current[it / 9][it % 9] == 0 && candidates(it / 9, it % 9).size in 2..4 }; seconds = 277
+    /** Window and system bars in the theme's paper colour. */
+    private fun paint(z: ZenColors) {
+        window.decorView.setBackgroundColor(z.bgBase.toArgb())
+        val bars = if (z.dark) SystemBarStyle.dark(AColor.TRANSPARENT) else SystemBarStyle.light(AColor.TRANSPARENT, AColor.TRANSPARENT)
+        enableEdgeToEdge(bars, bars)
     }
 
-    val scores = listOf(
-        Score("K7Q2M9XA", Difficulty.MEDIUM, 512, "21/10/2026"), Score("P3ZT8W1C", Difficulty.EASY, 248, "22/10/2026"),
-        Score("M0RNL4KE", Difficulty.HARD, 1103, "23/10/2026"), Score("Q9V5EBN2", Difficulty.EASY, 301, "24/10/2026"),
-        Score("ZH6WT3AU", Difficulty.MEDIUM, 655, "25/10/2026"), Score("D2X8FJ7Y", Difficulty.IMPOSSIBLE, 1847, "26/10/2026"),
-    )
-    val stats = Stats(started = 9, won = 6, streak = 3)
+    override fun onStart() { super.onStart(); app.audio.apply(app.settings, app.musicOn) }
+
+    override fun onStop() { app.stop(); super.onStop() }
 }

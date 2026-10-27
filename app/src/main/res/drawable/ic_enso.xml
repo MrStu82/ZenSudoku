@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher mark: an open sumi ensō with a small vermilion hanko. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:strokeColor="#2F2E2C" android:strokeWidth="5.5" android:strokeLineCap="round"
+        android:pathData="M44,72 A20,20 0 1,1 70,60" />
+    <path android:fillColor="#B8432F" android:pathData="M64,64h9v9h-9z" />
+</vector>
