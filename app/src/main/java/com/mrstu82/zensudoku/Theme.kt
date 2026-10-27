@@ -2,6 +2,7 @@ package com.mrstu82.zensudoku
 
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
@@ -40,6 +41,7 @@ val Themes = mapOf(
 
 val LocalZen = staticCompositionLocalOf { Themes.getValue("classic") }
 
+@OptIn(ExperimentalTextApi::class)
 private fun weights(res: Int, vararg w: Int) =
     FontFamily(w.map { Font(res, FontWeight(it), variationSettings = FontVariation.Settings(FontVariation.weight(it))) })
 
