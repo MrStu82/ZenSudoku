@@ -27,10 +27,10 @@ Release signing reads `SIGNING_STORE_FILE`, `SIGNING_STORE_PASSWORD`, `SIGNING_K
 
 ## Credits
 
-- Music (`audio/`): to swap a track, replace its file; the playlist is the `Tracks` list in `Audio.kt`.
-  - Wind: "Wind", Stuart's own track, made with Suno (by _llama_, 28 Dec 2025).
-  - Water: "Water", Stuart's own track, made with Suno (by _llama_, 29 Dec 2025).
-  - Spirit: "Night Spirits", Stuart's own track, made with Suno (28 Dec 2025).
-  - Earth: "Bamboo Forest", Stuart's own track, made with Suno.
-  - Ether: "The Slow Mountain Walk", Stuart's own track, made with Suno (by _llama_, 28 Dec 2025).
+- Music (`audio/`): all five tracks are Stuart's (_llama_) own, made with Suno. They're bundled as stereo Opus at 96 kbps, re-encoded from his MP3 masters (source SHA-256 below). To swap a track, replace its file; the playlist is the `Tracks` list in `Audio.kt`.
+  - Wind 風 (`wind.webm`): "Wind", 28 Dec 2025. Source `2114d1c516877c90cfe9710d2bf4d74a94602031947eacf6df58197423e2d3d3`
+  - Water 水 (`water.webm`): "Water", 29 Dec 2025. Source `b71cd2f77d4463b61cac8376051a36bef08d7486411e1fb8e0921424c6b4f738`
+  - Spirit 魂 (`spirit.webm`): "Night Spirits", 28 Dec 2025. Source `bb686d43495cb35ff80b95695e9c06261107b1189f46f0c72889796fc2add010`
+  - Earth 地 (`earth.webm`): "Bamboo Forest". Source `2d7668aaa37576b94b21bd6ee04fbdfe3f2ef2b7365c3a5d9a59d4d3aeaa1e6b`
+  - Ether 空 (`ether.webm`): "The Slow Mountain Walk", 28 Dec 2025. Source `286c27f5453ec43590719618179063a674249880cecfcd7aaa1ba49f99eed15d`
 - Fonts: Shippori Mincho, Yuji Syuku and JetBrains Mono, all under the SIL Open Font License (see `licenses/`).

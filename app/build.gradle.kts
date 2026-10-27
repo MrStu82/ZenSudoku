@@ -12,8 +12,8 @@ android {
         applicationId = "com.mrstu82.zensudoku"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
     }
 
     // Keystore lives only on the build host; passwords come from the environment, never the repo.
@@ -37,6 +37,7 @@ android {
 
     // The five ambient tracks sit in /audio at the repo root and ship as uncompressed assets.
     sourceSets["main"].assets.srcDirs("../audio")
+    androidResources.noCompress += "webm"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

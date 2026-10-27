@@ -13,8 +13,8 @@ import kotlin.math.sin
 class Track(val name: String, val kanji: String, val file: String)
 
 val Tracks = listOf(
-    Track("Wind", "風", "wind.mp3"), Track("Water", "水", "water.mp3"), Track("Spirit", "魂", "spirit.mp3"),
-    Track("Earth", "地", "earth.mp3"), Track("Ether", "空", "ether.mp3"),
+    Track("Wind", "風", "wind.webm"), Track("Water", "水", "water.webm"), Track("Spirit", "魂", "spirit.webm"),
+    Track("Earth", "地", "earth.webm"), Track("Ether", "空", "ether.webm"),
 )
 
 /** Volume steps shared by music and sound effects. */
