@@ -17,11 +17,11 @@ data class ZenColors(
 )
 
 val Themes = mapOf(
-    // Washi paper, sumi ink, ai (indigo) accent.
+    // Washi paper, sumi charcoal, ai (indigo) accent.
     "classic" to ZenColors(
-        "Washi", Color(0xFFF2EDE2), Color(0xFF2B2A28), Color(0xFF6E675D), Color(0xFF34506B),
-        Color(0xFFFBF8F1), Color(0x3B2B2A28), Color(0xFF2B2A28), Color(0xEBFBF8F1),
-        Color(0x8034506B), Color(0x142B2A28), Color(0x3834506B), Color(0x2234506B),
+        "Washi", Color(0xFFF1EBDD), Color(0xFF2F2E2C), Color(0xFF6F685E), Color(0xFF2E4A66),
+        Color(0xFFFAF6EC), Color(0x332F2E2C), Color(0xFF2F2E2C), Color(0xE6FAF6EC),
+        Color(0x80748A4A), Color(0x122F2E2C), Color(0x332E4A66), Color(0x1F2E4A66),
     ),
     "dark" to ZenColors(
         "Yoru", Color(0xFF121820), Color(0xFFF5F6FA), Color(0xFFA4B0BE), Color(0xFF45AAF2),
@@ -40,8 +40,9 @@ val Themes = mapOf(
     ),
 )
 
-/** Shu-iro vermilion, used only for the hanko seal and mistakes. */
-val Shu = Color(0xFFC0432F)
+/** Shu-iro vermilion (hanko seal, mistakes) and matcha (gentle guidance). */
+val Shu = Color(0xFFB8432F)
+val Matcha = Color(0xFF748A4A)
 
 val LocalZen = staticCompositionLocalOf { Themes.getValue("classic") }
 
@@ -49,5 +50,13 @@ val LocalZen = staticCompositionLocalOf { Themes.getValue("classic") }
 private fun weights(res: Int, vararg w: Int) =
     FontFamily(w.map { Font(res, FontWeight(it), variationSettings = FontVariation.Settings(FontVariation.weight(it))) })
 
-val Quicksand = weights(R.font.quicksand, 400, 500, 600, 700)
+/** Shippori Mincho (subset): one step lighter than asked, for a calmer page. */
+val Mincho = FontFamily(
+    Font(R.font.mincho_regular, FontWeight.W400), Font(R.font.mincho_regular, FontWeight.W500),
+    Font(R.font.mincho_semibold, FontWeight.W600), Font(R.font.mincho_semibold, FontWeight.W700),
+    Font(R.font.mincho_bold, FontWeight.W800),
+)
+
+/** Yuji Syuku brush face (subset), for titles only. */
+val Brush = FontFamily(Font(R.font.yuji_syuku))
 val Mono = weights(R.font.jetbrains_mono, 500, 700)

@@ -22,6 +22,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -43,7 +45,7 @@ fun Modifier.tap(onClick: () -> Unit) = clickable(interactionSource = null, indi
 @Composable
 fun T(
     s: String, size: TextUnit, weight: Int = 500, color: Color = LocalZen.current.textPrimary,
-    spacing: TextUnit = 0.sp, family: FontFamily = Quicksand, align: TextAlign = TextAlign.Start, modifier: Modifier = Modifier,
+    spacing: TextUnit = 0.sp, family: FontFamily = Mincho, align: TextAlign = TextAlign.Start, modifier: Modifier = Modifier,
 ) = BasicText(
     s, modifier,
     style = TextStyle(color = color, fontSize = size, fontWeight = FontWeight(weight), letterSpacing = spacing, fontFamily = family, textAlign = align),
@@ -67,37 +69,60 @@ fun ZenBackground() {
             }
             row++; y += r / 2
         }
+        // Washi fibres and specks, fixed seed so the paper never "moves".
+        val rnd = java.util.Random(7); val fibre = z.textPrimary.copy(alpha = .05f)
+        repeat((size.width * size.height / 2500f).toInt()) {
+            val p = Offset(rnd.nextFloat() * size.width, rnd.nextFloat() * size.height)
+            if (rnd.nextInt(3) == 0) drawCircle(fibre, (.4f + rnd.nextFloat()) * density, p)
+            else {
+                val a = rnd.nextFloat() * 6.283f; val l = (6 + rnd.nextFloat() * 18) * density
+                drawLine(fibre, p, p + Offset(kotlin.math.cos(a) * l, kotlin.math.sin(a) * l), .6f * density)
+            }
+        }
+    }
+}
+
+/** Brush ensō: one open stroke that thins and dries out towards its tail. */
+@Composable
+fun Enso(modifier: Modifier) {
+    val ink = LocalZen.current.textPrimary
+    Canvas(modifier) {
+        val n = 140; val start = 115f; val sweep = 318f; val maxW = size.minDimension * .085f
+        val inset = maxW; val box = Size(size.width - 2 * inset, size.height - 2 * inset)
+        for (i in 0 until n) {
+            val t = i / n.toFloat()
+            val w = maxW * (1f - .7f * t) * (.92f + .08f * kotlin.math.sin(t * 23f))
+            drawArc(
+                ink.copy(alpha = .85f * (1f - .45f * t * t)), start + sweep * t, sweep / n + .8f, false,
+                Offset(inset, inset), box, style = Stroke(w, cap = StrokeCap.Round),
+            )
+        }
     }
 }
 
 @Composable
 fun PlayerBar(track: String, playing: Boolean) {
     val z = LocalZen.current
+    // Unobtrusive: no surface, no divider, sits below the status bar at 45% ink.
     Row(
-        Modifier.fillMaxWidth().background(z.glass)
-            .drawBehind { drawLine(z.gridLine, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx()) }
-            .statusBarsPadding().height(60.dp).padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp),
+        Modifier.fillMaxWidth().statusBarsPadding().padding(top = 8.dp).height(32.dp).padding(horizontal = 24.dp).alpha(.45f),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.width(90.dp)) {
-            T(track.uppercase(), 9.sp, 700, spacing = .1.em, modifier = Modifier.alpha(.4f))
-            T(if (playing) "Harmony Active" else "Paused", 8.sp, 700, modifier = Modifier.alpha(.6f))
-        }
-        Box(Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(2.dp)).background(Color.Black.copy(alpha = .05f)))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            SvgIcon(Ic.SPEAKER, z.textPrimary, 20.dp, modifier = Modifier.padding(8.dp).alpha(.5f))
-            SvgIcon(if (playing) Ic.PAUSE else Ic.PLAY, z.textPrimary, 22.dp, modifier = Modifier.padding(8.dp).alpha(.5f))
-        }
+        T(track, 12.sp, 500, spacing = .1.em)
+        if (playing) T("  ·  playing", 10.sp, 400, z.textSecondary)
+        Spacer(Modifier.weight(1f))
+        SvgIcon(Ic.SPEAKER, z.textPrimary, 16.dp, stroke = 1.5f, modifier = Modifier.padding(6.dp))
+        SvgIcon(if (playing) Ic.PAUSE else Ic.PLAY, z.textPrimary, 16.dp, stroke = 1.5f, modifier = Modifier.padding(6.dp))
     }
 }
 
-private val CardShape = RoundedCornerShape(32.dp)
+private val CardShape = RoundedCornerShape(6.dp)
 
 @Composable
 fun GlassCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     val z = LocalZen.current
     Column(
-        modifier.shadow(14.dp, CardShape, ambientColor = Color.Black.copy(alpha = .1f), spotColor = Color.Black.copy(alpha = .1f))
+        modifier.shadow(6.dp, CardShape, ambientColor = Color.Black.copy(alpha = .06f), spotColor = Color.Black.copy(alpha = .08f))
             .background(z.glass, CardShape).border(1.dp, z.gridLine, CardShape),
         content = content,
     )
@@ -105,25 +130,25 @@ fun GlassCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.()
 
 @Composable
 fun ZenButton(label: String, icon: String, onClick: () -> Unit) {
-    val z = LocalZen.current; val shape = RoundedCornerShape(24.dp)
+    val z = LocalZen.current; val shape = RoundedCornerShape(4.dp)
     Row(
-        Modifier.fillMaxWidth().clip(shape).background(z.boardBg, shape).border(1.dp, z.gridLine, shape)
-            .tap(onClick).padding(17.6.dp),
+        Modifier.fillMaxWidth().clip(shape).background(z.glass, shape).border(1.dp, z.gridLine, shape)
+            .tap(onClick).padding(horizontal = 20.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
     ) {
-        T(label, 17.sp, 700)
-        SvgIcon(icon, z.textPrimary, 20.dp)
+        T(label, 17.sp, 500)
+        SvgIcon(icon, z.textSecondary, 18.dp, stroke = 1.5f)
     }
 }
 
 /** Web: glass-card "Return" pill with no border/shadow. */
 @Composable
 fun ReturnButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(4.dp)
     Box(
         modifier.fillMaxWidth().clip(shape).background(LocalZen.current.glass, shape).tap(onClick).padding(vertical = 16.dp),
         contentAlignment = Alignment.Center,
-    ) { T("Return", 16.sp, 700) }
+    ) { T("Return", 16.sp, 500) }
 }
 
 fun clock(s: Int) = "%02d:%02d".format(s / 60, s % 60)
@@ -134,24 +159,26 @@ fun clock(s: Int) = "%02d:%02d".format(s / 60, s % 60)
 fun MenuScreen(go: (Screen) -> Unit) {
     Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
         Column(Modifier.widthIn(max = 384.dp).fillMaxWidth()) {
-            GlassCard(Modifier.fillMaxWidth()) {
-                Column(Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(Modifier.size(44.dp).clip(RoundedCornerShape(6.dp)).background(Shu), contentAlignment = Alignment.Center) {
-                        T("禅", 26.sp, 700, Color(0xFFFBF8F1))
-                    }
-                    Spacer(Modifier.height(12.dp))
-                    T("ZEN", 56.sp, 700, spacing = (-.05).em)
-                    Spacer(Modifier.height(6.dp))
-                    Row(Modifier.alpha(.6f), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        T("数独", 12.sp, 500); T("·", 12.sp, 500); T("S U D O K U", 12.sp, 500, spacing = .3.em)
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.size(150.dp), contentAlignment = Alignment.Center) {
+                    Enso(Modifier.fillMaxSize())
+                    T("禅", 64.sp, family = Brush)
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    T("Zen Sudoku", 34.sp, family = Brush)
+                    Spacer(Modifier.width(10.dp))
+                    // Hanko seal, like a signature on a scroll.
+                    Box(Modifier.size(26.dp).background(Shu, RoundedCornerShape(3.dp)), contentAlignment = Alignment.Center) {
+                        T("数独", 9.sp, 700, Color(0xFFFAF6EC))
                     }
                 }
             }
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(28.dp))
             var level by remember { mutableStateOf(Difficulty.MEDIUM) }
             Chips(Difficulty.entries, level, { "${it.kanji}\n${it.label.substringBefore(' ')}" }) { level = it }
             Spacer(Modifier.height(12.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 ZenButton("Begin Journey", Ic.ARROW) { go(Screen.Game) }
                 ZenButton("Daily Seed · ${dailySeed()}", Ic.SUN) { go(Screen.Game) }
                 ZenButton("Recall Seed", Ic.ARROW) {}
@@ -166,15 +193,15 @@ fun MenuScreen(go: (Screen) -> Unit) {
 /** Segmented pill row (menu difficulty, records filter). */
 @Composable
 fun <K> Chips(items: List<K>, selected: K, label: (K) -> String, pick: (K) -> Unit) {
-    val z = LocalZen.current; val shape = RoundedCornerShape(16.dp)
+    val z = LocalZen.current; val shape = RoundedCornerShape(4.dp)
     Row(Modifier.fillMaxWidth().clip(shape).background(z.glass, shape).border(1.dp, z.gridLine, shape).padding(4.dp)) {
         items.forEach { k ->
             val on = k == selected
             Box(
-                Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(if (on) z.accent else Color.Transparent)
+                Modifier.weight(1f).clip(RoundedCornerShape(3.dp)).background(if (on) z.accent else Color.Transparent)
                     .tap { pick(k) }.padding(vertical = 10.dp),
                 contentAlignment = Alignment.Center,
-            ) { T(label(k), 12.sp, 700, if (on) Color.White else z.textSecondary, align = TextAlign.Center) }
+            ) { T(label(k), 12.sp, 500, if (on) Color(0xFFFAF6EC) else z.textSecondary, align = TextAlign.Center) }
         }
     }
 }
@@ -193,11 +220,11 @@ fun GameScreen(g: GameState, best: Int?) {
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                     T("MISTAKES: ${g.mistakes}/${g.mistakeLimit}", 9.sp, 700, spacing = .1.em, modifier = Modifier.alpha(.5f))
                     Spacer(Modifier.height(4.dp))
-                    T(clock(g.seconds), 30.sp, 700, spacing = (-.05).em)
+                    T(clock(g.seconds), 28.sp, 500)
                     if (best != null) T("BEST ${clock(best)}", 9.sp, 700, spacing = .1.em, modifier = Modifier.alpha(.5f))
                 }
                 Row(Modifier.weight(1f), horizontalArrangement = Arrangement.End) {
-                    SvgIcon(Ic.BLOOM, z.accent, 24.dp, stroke = 2f, modifier = Modifier.tap { g.fillSingles() }.padding(8.dp).alpha(if (g.singles().isEmpty()) .25f else .9f))
+                    SvgIcon(Ic.BLOOM, Matcha, 24.dp, stroke = 1.6f, modifier = Modifier.tap { g.fillSingles() }.padding(8.dp).alpha(if (g.singles().isEmpty()) .25f else .9f))
                     SvgIcon(Ic.UNDO, z.textPrimary, 24.dp, modifier = Modifier.tap { g.undo() }.padding(8.dp).alpha(.6f))
                 }
             }
@@ -220,9 +247,9 @@ fun GameScreen(g: GameState, best: Int?) {
 
 @Composable
 fun Board(g: GameState, side: Dp) {
-    val z = LocalZen.current; val shape = RoundedCornerShape(8.dp)
+    val z = LocalZen.current; val shape = RoundedCornerShape(3.dp)
     Box(
-        Modifier.size(side).shadow(20.dp, shape, ambientColor = Color.Black.copy(alpha = .1f), spotColor = Color.Black.copy(alpha = .2f))
+        Modifier.size(side).shadow(8.dp, shape, ambientColor = Color.Black.copy(alpha = .1f), spotColor = Color.Black.copy(alpha = .2f))
             .background(z.boardBg, shape).border(2.dp, z.gridMajor, shape).padding(2.dp)
             .drawBehind {
                 val c = size.width / 9
@@ -261,18 +288,18 @@ private fun Cell(g: GameState, r: Int, c: Int, modifier: Modifier) {
         else -> Color.Transparent
     }
     // Single-candidate cells get a soft inner border ("inner clarity").
-    val glow = if (single) Modifier.padding(2.dp).border(1.dp, z.accent.copy(alpha = .35f), RoundedCornerShape(3.dp)) else Modifier
+    val glow = if (single) Modifier.padding(2.dp).border(1.dp, Matcha.copy(alpha = .6f), RoundedCornerShape(3.dp)) else Modifier
     Box(modifier.background(bg).tap { g.selected = r * 9 + c }, contentAlignment = Alignment.Center) {
         Box(Modifier.fillMaxSize().then(glow))
         when {
-            v != 0 && given -> T("$v", 19.sp, 700, z.textPrimary)
-            v != 0 -> T("$v", 17.sp, 500, if (wrong) Shu else z.accent, family = Mono)
+            v != 0 && given -> T("$v", 20.sp, 800, z.textPrimary)
+            v != 0 -> T("$v", 20.sp, 400, if (wrong) Shu else z.accent)
             // Up to 4 pencil notes, one per quadrant, in entry order.
             g.notes[r][c].isNotEmpty() -> Column(Modifier.fillMaxSize().padding(3.dp)) {
                 val ns = g.notes[r][c].toList()
                 for (qr in 0 until 2) Row(Modifier.weight(1f)) {
                     for (qc in 0 until 2) Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                        ns.getOrNull(qr * 2 + qc)?.let { T("$it", 9.sp, 600, z.textSecondary, family = Mono) }
+                        ns.getOrNull(qr * 2 + qc)?.let { T("$it", 10.sp, 500, z.textSecondary) }
                     }
                 }
             }
@@ -290,7 +317,7 @@ fun Numpad(g: GameState, width: Dp) {
         keys.chunked(6).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { k ->
-                    val shape = RoundedCornerShape(12.dp)
+                    val shape = RoundedCornerShape(4.dp)
                     val active = k == "note" && g.noteMode
                     val done = k is Int && k != 0 && counts[k] >= 9
                     val blocked = k is Int && k != 0 && allowed != null && k !in allowed
@@ -308,7 +335,7 @@ fun Numpad(g: GameState, width: Dp) {
                                 T("MODE", 7.sp, 700, Color(0xFF64748B), modifier = Modifier.padding(top = 4.dp).alpha(.6f))
                             }
                             else -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                T("$k", 22.sp, 700)
+                                T("$k", 22.sp, 500)
                                 T("${9 - counts[k as Int]}", 8.sp, 600, modifier = Modifier.alpha(.6f))
                             }
                         }
@@ -326,11 +353,13 @@ class Stats(val started: Int, val won: Int, val streak: Int)
 
 @Composable
 fun RecordsScreen(scores: List<Score>, stats: Stats, back: () -> Unit) {
+    val z = LocalZen.current
     Box(Modifier.fillMaxSize().navigationBarsPadding().padding(24.dp), contentAlignment = Alignment.Center) {
         Box(Modifier.widthIn(max = 440.dp).fillMaxWidth()) {
             GlassCard(Modifier.fillMaxWidth().heightIn(max = (LocalConfiguration.current.screenHeightDp * .85f).dp)) {
                 Column(Modifier.padding(32.dp)) {
-                    T("Your Records", 30.sp, 700, align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                    T("記録", 34.sp, family = Brush, align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                    T("RECORDS", 10.sp, 500, z.textSecondary, spacing = .4.em, align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(24.dp))
                     val rate = if (stats.started > 0) Math.round(stats.won * 100f / stats.started) else 0
                     Row(Modifier.fillMaxWidth().alpha(.6f), horizontalArrangement = Arrangement.SpaceAround) {
@@ -341,11 +370,11 @@ fun RecordsScreen(scores: List<Score>, stats: Stats, back: () -> Unit) {
                         Difficulty.entries.forEach { d ->
                             val best = scores.filter { it.difficulty == d }.minOfOrNull { it.seconds }
                             Column(
-                                Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(Color.Black.copy(alpha = .05f)).padding(vertical = 10.dp),
+                                Modifier.weight(1f).clip(RoundedCornerShape(3.dp)).background(z.textPrimary.copy(alpha = .045f)).padding(vertical = 10.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
                                 T(d.label.substringBefore(' ').uppercase(), 8.sp, 700, spacing = .1.em, modifier = Modifier.alpha(.5f))
-                                T(best?.let { "%d:%02d".format(it / 60, it % 60) } ?: "–", 13.sp, 700, family = Mono)
+                                T(best?.let { "%d:%02d".format(it / 60, it % 60) } ?: "–", 13.sp, 600)
                             }
                         }
                     }
@@ -353,7 +382,7 @@ fun RecordsScreen(scores: List<Score>, stats: Stats, back: () -> Unit) {
                     LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         itemsIndexed(scores.sortedBy { it.seconds }.take(30)) { i, s ->
                             Row(
-                                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color.Black.copy(alpha = .05f)).padding(12.dp),
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(3.dp)).background(z.textPrimary.copy(alpha = .045f)).padding(12.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Column {
@@ -361,7 +390,7 @@ fun RecordsScreen(scores: List<Score>, stats: Stats, back: () -> Unit) {
                                     T(s.difficulty.name, 9.sp, 700, modifier = Modifier.alpha(.6f))
                                     T(s.date, 8.sp, 500, modifier = Modifier.alpha(.4f))
                                 }
-                                T("%d:%02d".format(s.seconds / 60, s.seconds % 60), 14.sp, 700, family = Mono)
+                                T("%d:%02d".format(s.seconds / 60, s.seconds % 60), 14.sp, 600)
                             }
                         }
                     }
