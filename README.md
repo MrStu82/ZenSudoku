@@ -27,5 +27,5 @@ Release signing reads `SIGNING_STORE_FILE`, `SIGNING_STORE_PASSWORD`, `SIGNING_K
 
 ## Credits
 
-- Music (`audio/`): **placeholder tracks**. Wind and Water were supplied by the owner; Spirit, Earth and Ether were made by Rivet. All five will be replaced.
+- Music (`audio/`): Spirit is "Night Spirits", Stuart's own track, made with Suno (28 Dec 2025). Wind, Water, Earth and Ether are **placeholder tracks**: Wind and Water were supplied by the owner, Earth and Ether were made by Rivet, and all four will be replaced.
 - Fonts: Shippori Mincho, Yuji Syuku and JetBrains Mono, all under the SIL Open Font License (see `licenses/`).

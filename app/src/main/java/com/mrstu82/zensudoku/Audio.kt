@@ -9,7 +9,7 @@ import kotlin.math.PI
 import kotlin.math.exp
 import kotlin.math.sin
 
-/** The godai elements; each maps to a bundled placeholder track in /audio. */
+/** The godai elements; each maps to a bundled track in /audio. */
 class Track(val name: String, val kanji: String, val file: String)
 
 val Tracks = listOf(
