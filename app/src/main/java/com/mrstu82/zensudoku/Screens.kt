@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -178,17 +179,22 @@ fun GameScreen(g: GameState) {
         val side = minOf(maxWidth, 420.dp, (LocalConfiguration.current.screenHeightDp * .44f).dp)
         Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
             Row(Modifier.widthIn(max = 440.dp).fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                SvgIcon(Ic.PAUSE, z.textPrimary, 24.dp, modifier = Modifier.padding(8.dp).alpha(.6f))
+                Row(Modifier.weight(1f)) { SvgIcon(Ic.PAUSE, z.textPrimary, 24.dp, modifier = Modifier.padding(8.dp).alpha(.6f)) }
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                     T("MISTAKES: ${g.mistakes}/${g.mistakeLimit}", 9.sp, 700, spacing = .1.em, modifier = Modifier.alpha(.5f))
                     Spacer(Modifier.height(4.dp))
                     T(clock(g.seconds), 30.sp, 700, spacing = (-.05).em)
                 }
-                Box(Modifier.tap { g.hint() }.padding(8.dp).alpha(if (g.hintsLeft > 0) .6f else .2f)) {
-                    SvgIcon(Ic.HINT, z.textPrimary, 24.dp)
-                    T("${g.hintsLeft}", 9.sp, 700, modifier = Modifier.align(Alignment.TopEnd).offset(6.dp, (-4).dp))
+                Row(Modifier.weight(1f), horizontalArrangement = Arrangement.End) {
+                    Box(Modifier.tap { g.hint() }.padding(8.dp).alpha(if (g.hintsLeft > 0) 1f else .3f)) {
+                        SvgIcon(Ic.HINT, z.textPrimary, 24.dp, modifier = Modifier.alpha(.6f))
+                        Box(
+                            Modifier.align(Alignment.TopEnd).offset(6.dp, (-6).dp).size(15.dp).clip(CircleShape).background(z.accent),
+                            contentAlignment = Alignment.Center,
+                        ) { T("${g.hintsLeft}", 9.sp, 700, Color.White) }
+                    }
+                    SvgIcon(Ic.UNDO, z.textPrimary, 24.dp, modifier = Modifier.tap { g.undo() }.padding(8.dp).alpha(.6f))
                 }
-                SvgIcon(Ic.UNDO, z.textPrimary, 24.dp, modifier = Modifier.tap { g.undo() }.padding(8.dp).alpha(.6f))
             }
             Spacer(Modifier.height(12.dp))
             Board(g, side)
@@ -311,7 +317,7 @@ class Stats(val started: Int, val won: Int, val streak: Int)
 fun RecordsScreen(scores: List<Score>, stats: Stats, back: () -> Unit) {
     Box(Modifier.fillMaxSize().navigationBarsPadding().padding(24.dp), contentAlignment = Alignment.Center) {
         Box(Modifier.widthIn(max = 440.dp).fillMaxWidth()) {
-            GlassCard(Modifier.fillMaxWidth().heightIn(max = (LocalConfiguration.current.screenHeightDp * .75f).dp)) {
+            GlassCard(Modifier.fillMaxWidth().heightIn(max = (LocalConfiguration.current.screenHeightDp * .85f).dp)) {
                 Column(Modifier.padding(32.dp)) {
                     T("Your Records", 30.sp, 700, align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(24.dp))
