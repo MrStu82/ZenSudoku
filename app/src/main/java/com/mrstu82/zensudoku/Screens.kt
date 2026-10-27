@@ -33,6 +33,9 @@ import androidx.compose.ui.unit.sp
 
 // ---------- shared pieces (web: .zen-bg, .player-bar, .glass-card, .btn-zen) ----------
 
+/** Web taps have no ripple or focus fill. */
+fun Modifier.tap(onClick: () -> Unit) = clickable(interactionSource = null, indication = null, onClick = onClick)
+
 @Composable
 fun T(
     s: String, size: TextUnit, weight: Int = 500, color: Color = LocalZen.current.textPrimary,
@@ -96,7 +99,7 @@ fun ZenButton(label: String, icon: String, onClick: () -> Unit) {
     val z = LocalZen.current; val shape = RoundedCornerShape(24.dp)
     Row(
         Modifier.fillMaxWidth().clip(shape).background(z.boardBg, shape).border(1.dp, z.gridLine, shape)
-            .clickable(onClick = onClick).padding(17.6.dp),
+            .tap(onClick).padding(17.6.dp),
         horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
     ) {
         T(label, 17.sp, 700)
@@ -109,7 +112,7 @@ fun ZenButton(label: String, icon: String, onClick: () -> Unit) {
 fun ReturnButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(16.dp)
     Box(
-        modifier.fillMaxWidth().clip(shape).background(LocalZen.current.glass, shape).clickable(onClick = onClick).padding(vertical = 16.dp),
+        modifier.fillMaxWidth().clip(shape).background(LocalZen.current.glass, shape).tap(onClick).padding(vertical = 16.dp),
         contentAlignment = Alignment.Center,
     ) { T("Return", 16.sp, 700) }
 }
@@ -157,7 +160,7 @@ fun GameScreen(g: GameState) {
                     Spacer(Modifier.height(4.dp))
                     T(clock(g.seconds), 30.sp, 700, spacing = (-.05).em)
                 }
-                SvgIcon(Ic.UNDO, z.textPrimary, 24.dp, modifier = Modifier.clickable { g.undo() }.padding(8.dp).alpha(.6f))
+                SvgIcon(Ic.UNDO, z.textPrimary, 24.dp, modifier = Modifier.tap { g.undo() }.padding(8.dp).alpha(.6f))
             }
             Spacer(Modifier.height(12.dp))
             Board(g, side)
@@ -212,7 +215,7 @@ private fun Cell(g: GameState, r: Int, c: Int, modifier: Modifier) {
         given -> z.prefilledBg
         else -> Color.Transparent
     }
-    Box(modifier.background(bg).clickable { g.selected = r * 9 + c }, contentAlignment = Alignment.Center) {
+    Box(modifier.background(bg).tap { g.selected = r * 9 + c }, contentAlignment = Alignment.Center) {
         when {
             v != 0 -> T(
                 "$v", 17.sp, 700, color = when { wrong -> Color(0xFFD63031); given -> z.textPrimary; else -> z.accent },
@@ -244,7 +247,7 @@ fun Numpad(g: GameState, width: Dp) {
                     Box(
                         Modifier.weight(1f).aspectRatio(1f).alpha(if (done) .3f else 1f).clip(shape)
                             .background(if (active) z.accent else z.glass, shape).border(1.dp, z.gridLine, shape)
-                            .clickable { g.press(k) },
+                            .tap { g.press(k) },
                         contentAlignment = Alignment.Center,
                     ) {
                         when (k) {
