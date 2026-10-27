@@ -26,7 +26,6 @@ class GameState(val puzzle: Puzzle) {
     var mistakes by mutableIntStateOf(0)
     var seconds by mutableIntStateOf(0)
     val mistakeLimit = 3
-    var hintsLeft by mutableIntStateOf(3)
     var version by mutableIntStateOf(0)
         private set
     private val history = ArrayDeque<Pair<List<IntArray>, List<List<Set<Int>>>>>()
@@ -44,17 +43,27 @@ class GameState(val puzzle: Puzzle) {
         history.addLast(current.map { it.copyOf() } to notes.map { row -> row.map { it.toSet() } })
         when {
             n == 0 -> { current[r][c] = 0; notes[r][c].clear() }
-            noteMode -> { current[r][c] = 0; if (!notes[r][c].remove(n)) notes[r][c].add(n) }
+            noteMode -> { current[r][c] = 0; if (!notes[r][c].remove(n) && notes[r][c].size < 4) notes[r][c].add(n) }
             else -> { if (n != puzzle.solution[r][c]) mistakes++; current[r][c] = n; notes[r][c].clear() }
         }
         version++
     }
 
-    /** Reveal the selected cell's answer; costs one of the 3 hints. */
-    fun hint() {
-        val i = selected ?: return
-        if (hintsLeft == 0 || current[i / 9][i % 9] == puzzle.solution[i / 9][i % 9]) return
-        hintsLeft--; val n = noteMode; noteMode = false; input(puzzle.solution[i / 9][i % 9]); noteMode = n
+    /** Digits not yet used in the cell's row, column or box. */
+    fun candidates(r: Int, c: Int): Set<Int> {
+        version
+        val used = (0 until 9).flatMap { listOf(current[r][it], current[it][c], current[r / 3 * 3 + it / 3][c / 3 * 3 + it % 3]) }
+        return (1..9).toSet() - used.toSet()
+    }
+
+    fun singles() = (0 until 81).filter { current[it / 9][it % 9] == 0 && candidates(it / 9, it % 9).size == 1 }
+
+    /** "Breath of clarity": fill every cell that has exactly one candidate. */
+    fun fillSingles() {
+        val s = singles().ifEmpty { return }
+        history.addLast(current.map { it.copyOf() } to notes.map { row -> row.map { it.toSet() } })
+        s.forEach { i -> current[i / 9][i % 9] = candidates(i / 9, i % 9).single(); notes[i / 9][i % 9].clear() }
+        version++
     }
 
     fun undo() {
@@ -78,10 +87,10 @@ class MainActivity : ComponentActivity() {
                 Box(Modifier.fillMaxSize().background(LocalZen.current.bgBase)) {
                     ZenBackground()
                     Column(Modifier.fillMaxSize()) {
-                        PlayerBar("Silent", playing = false)
+                        PlayerBar("Wind 風", playing = true)
                         when (screen) {
                             Screen.Menu -> MenuScreen { screen = it }
-                            Screen.Game -> GameScreen(game)
+                            Screen.Game -> GameScreen(game, best = 372)
                             Screen.Records -> RecordsScreen(Proto.scores, Proto.stats) { screen = Screen.Menu }
                         }
                     }
@@ -100,7 +109,7 @@ object Proto {
         listOf(2, 5, 8).forEach { input(it) }
         noteMode = false
         val wrong = empty[11]; selected = wrong; input(puzzle.solution[wrong / 9][wrong % 9] % 9 + 1)
-        selected = empty[3]; hintsLeft = 2; seconds = 277
+        selected = empty.first { current[it / 9][it % 9] == 0 && candidates(it / 9, it % 9).size in 2..4 }; seconds = 277
     }
 
     val scores = listOf(

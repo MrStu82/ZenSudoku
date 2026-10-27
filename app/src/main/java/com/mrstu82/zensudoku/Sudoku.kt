@@ -1,8 +1,8 @@
 package com.mrstu82.zensudoku
 
-enum class Difficulty(val label: String, val holes: Int) {
-    EASY("Pebble (Easy)", 34), MEDIUM("Bamboo (Medium)", 46),
-    HARD("Stone (Hard)", 56), IMPOSSIBLE("Mountain (Impossible)", 62),
+enum class Difficulty(val label: String, val kanji: String, val holes: Int) {
+    EASY("Pebble (Easy)", "石", 34), MEDIUM("Bamboo (Medium)", "竹", 46),
+    HARD("Stone (Hard)", "岩", 56), IMPOSSIBLE("Mountain (Impossible)", "山", 62),
 }
 
 class Puzzle(val seed: String, val difficulty: Difficulty, val givens: List<IntArray>, val solution: List<IntArray>)

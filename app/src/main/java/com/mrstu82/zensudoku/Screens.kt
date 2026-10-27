@@ -7,7 +7,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -50,19 +49,24 @@ fun T(
     style = TextStyle(color = color, fontSize = size, fontWeight = FontWeight(weight), letterSpacing = spacing, fontFamily = family, textAlign = align),
 )
 
-/** Ripple pattern: r40 and r10 circles on a 100px tile, 3% ink. */
+/** Seigaiha (blue-sea-wave) pattern: overlapping fans of concentric arcs, 5% ink. */
 @Composable
-fun ZenBackground() = Canvas(Modifier.fillMaxSize()) {
-    val tile = 100.dp.toPx(); val ink = Color.Black.copy(alpha = .03f); val st = Stroke(1.5.dp.toPx())
-    var y = 0f
-    while (y < size.height) {
-        var x = 0f
-        while (x < size.width) {
-            val c = Offset(x + tile / 2, y + tile / 2)
-            drawCircle(ink, 40.dp.toPx(), c, style = st); drawCircle(ink, 10.dp.toPx(), c, style = st)
-            x += tile
+fun ZenBackground() {
+    val z = LocalZen.current
+    Canvas(Modifier.fillMaxSize()) {
+        val r = 28.dp.toPx(); val ink = z.textPrimary.copy(alpha = .05f); val st = Stroke(1.dp.toPx())
+        var row = 0; var y = 0f
+        while (y < size.height + r) {
+            var x = if (row % 2 == 0) 0f else r
+            while (x < size.width + r) {
+                val c = Offset(x, y)
+                drawCircle(z.bgBase, r, c)
+                for (k in 1..4) drawCircle(ink, r * k / 4.3f, c, style = st)
+                drawCircle(ink, r, c, style = st)
+                x += 2 * r
+            }
+            row++; y += r / 2
         }
-        y += tile
     }
 }
 
@@ -131,21 +135,25 @@ fun MenuScreen(go: (Screen) -> Unit) {
     Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
         Column(Modifier.widthIn(max = 384.dp).fillMaxWidth()) {
             GlassCard(Modifier.fillMaxWidth()) {
-                Column(Modifier.fillMaxWidth().padding(40.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    T("ZEN", 60.sp, 700, spacing = (-.05).em)
-                    Spacer(Modifier.height(8.dp))
-                    T("S U D O K U", 12.sp, 500, spacing = .4.em, modifier = Modifier.alpha(.6f))
+                Column(Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(Modifier.size(44.dp).clip(RoundedCornerShape(6.dp)).background(Shu), contentAlignment = Alignment.Center) {
+                        T("禅", 26.sp, 700, Color(0xFFFBF8F1))
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    T("ZEN", 56.sp, 700, spacing = (-.05).em)
+                    Spacer(Modifier.height(6.dp))
+                    T("数独  ·  S U D O K U", 12.sp, 500, spacing = .3.em, modifier = Modifier.alpha(.6f))
                 }
             }
             Spacer(Modifier.height(24.dp))
             var level by remember { mutableStateOf(Difficulty.MEDIUM) }
-            Chips(Difficulty.entries, level, { it.label.substringBefore(' ') }) { level = it }
+            Chips(Difficulty.entries, level, { "${it.kanji}\n${it.label.substringBefore(' ')}" }) { level = it }
             Spacer(Modifier.height(12.dp))
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 ZenButton("Begin Journey", Ic.ARROW) { go(Screen.Game) }
                 ZenButton("Daily Seed · ${dailySeed()}", Ic.SUN) { go(Screen.Game) }
                 ZenButton("Recall Seed", Ic.ARROW) {}
-                ZenButton("Rules", Ic.RULES) {}
+                ZenButton("How to Play", Ic.RULES) {}
                 ZenButton("Records", Ic.STAR) { go(Screen.Records) }
                 ZenButton("Options", Ic.OPTIONS) {}
             }
@@ -164,7 +172,7 @@ fun <K> Chips(items: List<K>, selected: K, label: (K) -> String, pick: (K) -> Un
                 Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(if (on) z.accent else Color.Transparent)
                     .tap { pick(k) }.padding(vertical = 10.dp),
                 contentAlignment = Alignment.Center,
-            ) { T(label(k), 12.sp, 700, if (on) Color.White else z.textSecondary) }
+            ) { T(label(k), 12.sp, 700, if (on) Color.White else z.textSecondary, align = TextAlign.Center) }
         }
     }
 }
@@ -172,7 +180,7 @@ fun <K> Chips(items: List<K>, selected: K, label: (K) -> String, pick: (K) -> Un
 // ---------- game ----------
 
 @Composable
-fun GameScreen(g: GameState) {
+fun GameScreen(g: GameState, best: Int?) {
     val z = LocalZen.current
     BoxWithConstraints(Modifier.fillMaxSize().navigationBarsPadding().padding(horizontal = 24.dp, vertical = 24.dp)) {
         // Web: grid is 95vw capped at min(420px, 44vh).
@@ -184,15 +192,10 @@ fun GameScreen(g: GameState) {
                     T("MISTAKES: ${g.mistakes}/${g.mistakeLimit}", 9.sp, 700, spacing = .1.em, modifier = Modifier.alpha(.5f))
                     Spacer(Modifier.height(4.dp))
                     T(clock(g.seconds), 30.sp, 700, spacing = (-.05).em)
+                    if (best != null) T("BEST ${clock(best)}", 9.sp, 700, spacing = .1.em, modifier = Modifier.alpha(.5f))
                 }
                 Row(Modifier.weight(1f), horizontalArrangement = Arrangement.End) {
-                    Box(Modifier.tap { g.hint() }.padding(8.dp).alpha(if (g.hintsLeft > 0) 1f else .3f)) {
-                        SvgIcon(Ic.HINT, z.textPrimary, 24.dp, modifier = Modifier.alpha(.6f))
-                        Box(
-                            Modifier.align(Alignment.TopEnd).offset(6.dp, (-6).dp).size(15.dp).clip(CircleShape).background(z.accent),
-                            contentAlignment = Alignment.Center,
-                        ) { T("${g.hintsLeft}", 9.sp, 700, Color.White) }
-                    }
+                    SvgIcon(Ic.BLOOM, z.accent, 24.dp, stroke = 2f, modifier = Modifier.tap { g.fillSingles() }.padding(8.dp).alpha(if (g.singles().isEmpty()) .25f else .9f))
                     SvgIcon(Ic.UNDO, z.textPrimary, 24.dp, modifier = Modifier.tap { g.undo() }.padding(8.dp).alpha(.6f))
                 }
             }
@@ -246,25 +249,28 @@ private fun Cell(g: GameState, r: Int, c: Int, modifier: Modifier) {
     val s = g.selected; val sr = (s ?: 0) / 9; val sc = (s ?: 0) % 9
     val peer = s != null && (sr == r || sc == c || (sr / 3 == r / 3 && sc / 3 == c / 3))
     val same = s != null && v != 0 && v == g.current[sr][sc]
+    val single = v == 0 && g.candidates(r, c).size == 1
     val bg = when {
-        wrong -> Color(0x33D63031)
+        wrong -> Shu.copy(alpha = .16f)
         sel -> z.selectionBg
         same -> z.sameNumBg
         peer -> z.textPrimary.copy(alpha = .04f)
         given -> z.prefilledBg
         else -> Color.Transparent
     }
+    // Single-candidate cells get a soft inner border ("inner clarity").
+    val glow = if (single) Modifier.padding(3.dp).border(1.5.dp, z.hintGlow, RoundedCornerShape(4.dp)) else Modifier
     Box(modifier.background(bg).tap { g.selected = r * 9 + c }, contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxSize().then(glow))
         when {
-            v != 0 -> T(
-                "$v", 17.sp, 700, color = when { wrong -> Color(0xFFD63031); given -> z.textPrimary; else -> z.accent },
-                family = if (given) Quicksand else Mono,
-            )
-            g.notes[r][c].isNotEmpty() -> Column(Modifier.fillMaxSize().padding(2.dp)) {
-                for (nr in 0 until 3) Row(Modifier.weight(1f)) {
-                    for (nc in 0 until 3) Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                        val n = nr * 3 + nc + 1
-                        if (n in g.notes[r][c]) T("$n", 8.sp, 600, z.textSecondary, family = Mono)
+            v != 0 && given -> T("$v", 19.sp, 700, z.textPrimary)
+            v != 0 -> T("$v", 17.sp, 500, if (wrong) Shu else z.accent, family = Mono)
+            // Up to 4 pencil notes, one per quadrant, in entry order.
+            g.notes[r][c].isNotEmpty() -> Column(Modifier.fillMaxSize().padding(3.dp)) {
+                val ns = g.notes[r][c].toList()
+                for (qr in 0 until 2) Row(Modifier.weight(1f)) {
+                    for (qc in 0 until 2) Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                        ns.getOrNull(qr * 2 + qc)?.let { T("$it", 9.sp, 600, z.textSecondary, family = Mono) }
                     }
                 }
             }
@@ -275,6 +281,8 @@ private fun Cell(g: GameState, r: Int, c: Int, modifier: Modifier) {
 @Composable
 fun Numpad(g: GameState, width: Dp) {
     val z = LocalZen.current; val counts = g.counts()
+    val sel = g.selected?.takeIf { g.current[it / 9][it % 9] == 0 }
+    val allowed = sel?.let { g.candidates(it / 9, it % 9) }
     val keys: List<Any> = (1..9).toList() + listOf("mode", "note", 0)
     Column(Modifier.width(width), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         keys.chunked(6).forEach { row ->
@@ -283,8 +291,9 @@ fun Numpad(g: GameState, width: Dp) {
                     val shape = RoundedCornerShape(12.dp)
                     val active = k == "note" && g.noteMode
                     val done = k is Int && k != 0 && counts[k] >= 9
+                    val blocked = k is Int && k != 0 && allowed != null && k !in allowed
                     Box(
-                        Modifier.weight(1f).aspectRatio(1f).alpha(if (done) .3f else 1f).clip(shape)
+                        Modifier.weight(1f).aspectRatio(1f).alpha(if (done || blocked) .3f else 1f).clip(shape)
                             .background(if (active) z.accent else z.glass, shape).border(1.dp, z.gridLine, shape)
                             .tap { g.press(k) },
                         contentAlignment = Alignment.Center,

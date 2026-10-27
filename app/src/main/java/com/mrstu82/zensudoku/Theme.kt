@@ -17,27 +17,31 @@ data class ZenColors(
 )
 
 val Themes = mapOf(
+    // Washi paper, sumi ink, ai (indigo) accent.
     "classic" to ZenColors(
-        "Daylight", Color(0xFFF4F1EA), Color(0xFF2D3436), Color(0xFF636E72), Color(0xFF0984E3),
-        Color.White, Color.Black.copy(alpha = .25f), Color(0xFF2D3436), Color.White.copy(alpha = .95f),
-        Color(0x660984E3), Color.Black.copy(alpha = .06f), Color(0x400984E3), Color(0x260984E3),
+        "Washi", Color(0xFFF2EDE2), Color(0xFF2B2A28), Color(0xFF6E675D), Color(0xFF34506B),
+        Color(0xFFFBF8F1), Color(0x3B2B2A28), Color(0xFF2B2A28), Color(0xEBFBF8F1),
+        Color(0x8034506B), Color(0x142B2A28), Color(0x3834506B), Color(0x2234506B),
     ),
     "dark" to ZenColors(
-        "Midnight", Color(0xFF121820), Color(0xFFF5F6FA), Color(0xFFA4B0BE), Color(0xFF45AAF2),
+        "Yoru", Color(0xFF121820), Color(0xFFF5F6FA), Color(0xFFA4B0BE), Color(0xFF45AAF2),
         Color(0xFF1E272E), Color.White.copy(alpha = .15f), Color(0xFFF5F6FA), Color(0xFA1E272E),
         Color(0x8045AAF2), Color.White.copy(alpha = .08f), Color(0x4D45AAF2), Color(0x2645AAF2),
     ),
     "sepia" to ZenColors(
-        "Ancient", Color(0xFFFDF6E3), Color(0xFF586E75), Color(0xFF839496), Color(0xFFB58900),
+        "Sabi", Color(0xFFFDF6E3), Color(0xFF586E75), Color(0xFF839496), Color(0xFFB58900),
         Color(0xFFEEE8D5), Color(0x4D586E75), Color(0xFF586E75), Color(0xF2FDF6E3),
         Color(0x80B58900), Color(0x1AB58900), Color(0x33B58900), Color(0x1AB58900),
     ),
     "forest" to ZenColors(
-        "Forest", Color(0xFF064E3B), Color(0xFFECFDF5), Color(0xFFA7F3D0), Color(0xFF34D399),
+        "Koke", Color(0xFF064E3B), Color(0xFFECFDF5), Color(0xFFA7F3D0), Color(0xFF34D399),
         Color(0xFF065F46), Color(0x40ECFDF5), Color(0xFFECFDF5), Color(0xF2064E3B),
         Color(0x8034D399), Color(0x26ECFDF5), Color(0x4D34D399), Color(0x2634D399),
     ),
 )
+
+/** Shu-iro vermilion, used only for the hanko seal and mistakes. */
+val Shu = Color(0xFFC0432F)
 
 val LocalZen = staticCompositionLocalOf { Themes.getValue("classic") }
 
