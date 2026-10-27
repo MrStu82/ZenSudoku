@@ -142,7 +142,9 @@ fun MenuScreen(go: (Screen) -> Unit) {
                     Spacer(Modifier.height(12.dp))
                     T("ZEN", 56.sp, 700, spacing = (-.05).em)
                     Spacer(Modifier.height(6.dp))
-                    T("数独  ·  S U D O K U", 12.sp, 500, spacing = .3.em, modifier = Modifier.alpha(.6f))
+                    Row(Modifier.alpha(.6f), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        T("数独", 12.sp, 500); T("·", 12.sp, 500); T("S U D O K U", 12.sp, 500, spacing = .3.em)
+                    }
                 }
             }
             Spacer(Modifier.height(24.dp))
@@ -249,7 +251,7 @@ private fun Cell(g: GameState, r: Int, c: Int, modifier: Modifier) {
     val s = g.selected; val sr = (s ?: 0) / 9; val sc = (s ?: 0) % 9
     val peer = s != null && (sr == r || sc == c || (sr / 3 == r / 3 && sc / 3 == c / 3))
     val same = s != null && v != 0 && v == g.current[sr][sc]
-    val single = v == 0 && g.candidates(r, c).size == 1
+    val single = v == 0 && g.notes[r][c].isEmpty() && g.candidates(r, c).size == 1
     val bg = when {
         wrong -> Shu.copy(alpha = .16f)
         sel -> z.selectionBg
@@ -259,7 +261,7 @@ private fun Cell(g: GameState, r: Int, c: Int, modifier: Modifier) {
         else -> Color.Transparent
     }
     // Single-candidate cells get a soft inner border ("inner clarity").
-    val glow = if (single) Modifier.padding(3.dp).border(1.5.dp, z.hintGlow, RoundedCornerShape(4.dp)) else Modifier
+    val glow = if (single) Modifier.padding(2.dp).border(1.dp, z.accent.copy(alpha = .35f), RoundedCornerShape(3.dp)) else Modifier
     Box(modifier.background(bg).tap { g.selected = r * 9 + c }, contentAlignment = Alignment.Center) {
         Box(Modifier.fillMaxSize().then(glow))
         when {
