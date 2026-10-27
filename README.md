@@ -31,5 +31,6 @@ Release signing reads `SIGNING_STORE_FILE`, `SIGNING_STORE_PASSWORD`, `SIGNING_K
   - Spirit: "Night Spirits", Stuart's own track, made with Suno (28 Dec 2025).
   - Earth: "Bamboo Forest", Stuart's own track, made with Suno.
   - Ether: "The Slow Mountain Walk", Stuart's own track, made with Suno (by _llama_, 28 Dec 2025).
-  - Wind, Water: Stuart's tracks, from the original uploads to this repository.
+  - Water: "Water", Stuart's own track, made with Suno (by _llama_, 29 Dec 2025).
+  - Wind: Stuart's track, from the original upload to this repository.
 - Fonts: Shippori Mincho, Yuji Syuku and JetBrains Mono, all under the SIL Open Font License (see `licenses/`).
