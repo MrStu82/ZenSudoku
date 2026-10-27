@@ -216,7 +216,7 @@ fun GameScreen(g: GameState, best: Int?) {
         val side = minOf(maxWidth, 420.dp, (LocalConfiguration.current.screenHeightDp * .44f).dp)
         Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
             Row(Modifier.widthIn(max = 440.dp).fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Row(Modifier.weight(1f)) { SvgIcon(Ic.PAUSE, z.textPrimary, 24.dp, modifier = Modifier.padding(8.dp).alpha(.6f)) }
+                Row(Modifier.weight(1f)) { SvgIcon(Ic.PAUSE, z.textPrimary, 22.dp, stroke = 1.5f, modifier = Modifier.padding(8.dp).alpha(.6f)) }
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                     T("MISTAKES: ${g.mistakes}/${g.mistakeLimit}", 9.sp, 700, spacing = .1.em, modifier = Modifier.alpha(.5f))
                     Spacer(Modifier.height(4.dp))
@@ -225,7 +225,7 @@ fun GameScreen(g: GameState, best: Int?) {
                 }
                 Row(Modifier.weight(1f), horizontalArrangement = Arrangement.End) {
                     SvgIcon(Ic.BLOOM, Matcha, 24.dp, stroke = 1.6f, modifier = Modifier.tap { g.fillSingles() }.padding(8.dp).alpha(if (g.singles().isEmpty()) .25f else .9f))
-                    SvgIcon(Ic.UNDO, z.textPrimary, 24.dp, modifier = Modifier.tap { g.undo() }.padding(8.dp).alpha(.6f))
+                    SvgIcon(Ic.UNDO, z.textPrimary, 22.dp, stroke = 1.5f, modifier = Modifier.tap { g.undo() }.padding(8.dp).alpha(.6f))
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -328,11 +328,11 @@ fun Numpad(g: GameState, width: Dp) {
                         contentAlignment = Alignment.Center,
                     ) {
                         when (k) {
-                            0 -> SvgIcon(Ic.ERASE, Color(0xFFF87171), 22.dp, stroke = 3f)
-                            "note" -> SvgIcon(Ic.PENCIL, if (active) Color.White else Color(0xFF64748B), 22.dp)
+                            0 -> SvgIcon(Ic.ERASE, Shu, 20.dp, stroke = 1.5f)
+                            "note" -> SvgIcon(Ic.PENCIL, if (active) z.boardBg else z.textSecondary, 20.dp, stroke = 1.5f)
                             "mode" -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                SvgIcon(Ic.MODE, Color(0xFF64748B), 20.dp, modifier = Modifier.alpha(.5f))
-                                T("MODE", 7.sp, 700, Color(0xFF64748B), modifier = Modifier.padding(top = 4.dp).alpha(.6f))
+                                SvgIcon(Ic.MODE, z.textSecondary, 20.dp, stroke = 1.5f, modifier = Modifier.alpha(.7f))
+                                T("MODE", 7.sp, 600, z.textSecondary, modifier = Modifier.padding(top = 4.dp).alpha(.6f))
                             }
                             else -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 T("$k", 22.sp, 500)
@@ -356,7 +356,7 @@ fun RecordsScreen(scores: List<Score>, stats: Stats, back: () -> Unit) {
     val z = LocalZen.current
     Box(Modifier.fillMaxSize().navigationBarsPadding().padding(24.dp), contentAlignment = Alignment.Center) {
         Box(Modifier.widthIn(max = 440.dp).fillMaxWidth()) {
-            GlassCard(Modifier.fillMaxWidth().heightIn(max = (LocalConfiguration.current.screenHeightDp * .85f).dp)) {
+            GlassCard(Modifier.fillMaxWidth().heightIn(max = (LocalConfiguration.current.screenHeightDp * .9f).dp)) {
                 Column(Modifier.padding(32.dp)) {
                     T("記録", 34.sp, family = Brush, align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                     T("RECORDS", 10.sp, 500, z.textSecondary, spacing = .4.em, align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
@@ -379,10 +379,10 @@ fun RecordsScreen(scores: List<Score>, stats: Stats, back: () -> Unit) {
                         }
                     }
                     Spacer(Modifier.height(16.dp))
-                    LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         itemsIndexed(scores.sortedBy { it.seconds }.take(30)) { i, s ->
                             Row(
-                                Modifier.fillMaxWidth().clip(RoundedCornerShape(3.dp)).background(z.textPrimary.copy(alpha = .045f)).padding(12.dp),
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(3.dp)).background(z.textPrimary.copy(alpha = .045f)).padding(horizontal = 12.dp, vertical = 8.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Column {

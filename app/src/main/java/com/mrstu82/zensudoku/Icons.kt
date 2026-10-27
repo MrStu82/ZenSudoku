@@ -25,7 +25,7 @@ object Ic {
     const val PLAY = "M5 3L19 12L5 21Z"
     const val PAUSE = "M6 4h4v16H6zM14 4h4v16h-4z"
     const val UNDO = "M3 12a9 9 0 1 0 9-9a9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5"
-    const val MODE = "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 12h8M12 8v8"
+    const val MODE = "M7 4L3 8l4 4M3 8h14M17 12l4 4-4 4M21 16H7"
     const val PENCIL = "M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5L2 22l1.5-5.5L17 3z"
     const val ERASE = "M18 6L6 18M6 6l12 12"
     const val BLOOM = "M12 3c2 3 2 6 0 9c-2-3-2-6 0-9zM3 12c3-2 6-2 9 0c-3 2-6 2-9 0zM21 12c-3-2-6-2-9 0c3 2 6 2 9 0zM12 21c2-3 2-6 0-9c-2 3-2 6 0 9z"
