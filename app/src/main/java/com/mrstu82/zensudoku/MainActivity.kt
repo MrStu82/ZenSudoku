@@ -26,6 +26,7 @@ class GameState(val puzzle: Puzzle) {
     var mistakes by mutableIntStateOf(0)
     var seconds by mutableIntStateOf(0)
     val mistakeLimit = 3
+    var hintsLeft by mutableIntStateOf(3)
     var version by mutableIntStateOf(0)
         private set
     private val history = ArrayDeque<Pair<List<IntArray>, List<List<Set<Int>>>>>()
@@ -47,6 +48,13 @@ class GameState(val puzzle: Puzzle) {
             else -> { if (n != puzzle.solution[r][c]) mistakes++; current[r][c] = n; notes[r][c].clear() }
         }
         version++
+    }
+
+    /** Reveal the selected cell's answer; costs one of the 3 hints. */
+    fun hint() {
+        val i = selected ?: return
+        if (hintsLeft == 0 || current[i / 9][i % 9] == puzzle.solution[i / 9][i % 9]) return
+        hintsLeft--; val n = noteMode; noteMode = false; input(puzzle.solution[i / 9][i % 9]); noteMode = n
     }
 
     fun undo() {
@@ -91,7 +99,8 @@ object Proto {
         selected = empty[9]; noteMode = true
         listOf(2, 5, 8).forEach { input(it) }
         noteMode = false
-        selected = empty[12]; mistakes = 1; seconds = 277
+        val wrong = empty[11]; selected = wrong; input(puzzle.solution[wrong / 9][wrong % 9] % 9 + 1)
+        selected = empty[3]; hintsLeft = 2; seconds = 277
     }
 
     val scores = listOf(

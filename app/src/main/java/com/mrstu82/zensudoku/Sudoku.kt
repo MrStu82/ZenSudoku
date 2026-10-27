@@ -8,7 +8,13 @@ enum class Difficulty(val label: String, val holes: Int) {
 class Puzzle(val seed: String, val difficulty: Difficulty, val givens: List<IntArray>, val solution: List<IntArray>)
 
 /** 8-char level seed in the web version's alphabet (base-36, upper case). */
-fun randomSeed(): String = (1..8).map { "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ".random() }.joinToString("")
+const val SEED_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+fun randomSeed(): String = (1..8).map { SEED_CHARS.random() }.joinToString("")
+
+/** Same seed for everyone on a given day (java.util.Random is specified, so stable across devices). */
+fun dailySeed(day: java.time.LocalDate = java.time.LocalDate.now()): String =
+    java.util.Random(day.toEpochDay()).let { r -> (1..8).map { SEED_CHARS[r.nextInt(36)] }.joinToString("") }
 
 /**
  * Port of the web version's Zen.generate(): same string hash, PRNG and shuffle order,

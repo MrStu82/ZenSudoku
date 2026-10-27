@@ -10,6 +10,10 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -133,13 +137,33 @@ fun MenuScreen(go: (Screen) -> Unit) {
                 }
             }
             Spacer(Modifier.height(24.dp))
+            var level by remember { mutableStateOf(Difficulty.MEDIUM) }
+            Chips(Difficulty.entries, level, { it.label.substringBefore(' ') }) { level = it }
+            Spacer(Modifier.height(12.dp))
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 ZenButton("Begin Journey", Ic.ARROW) { go(Screen.Game) }
+                ZenButton("Daily Seed · ${dailySeed()}", Ic.SUN) { go(Screen.Game) }
                 ZenButton("Recall Seed", Ic.ARROW) {}
                 ZenButton("Rules", Ic.RULES) {}
                 ZenButton("Records", Ic.STAR) { go(Screen.Records) }
                 ZenButton("Options", Ic.OPTIONS) {}
             }
+        }
+    }
+}
+
+/** Segmented pill row (menu difficulty, records filter). */
+@Composable
+fun <K> Chips(items: List<K>, selected: K, label: (K) -> String, pick: (K) -> Unit) {
+    val z = LocalZen.current; val shape = RoundedCornerShape(16.dp)
+    Row(Modifier.fillMaxWidth().clip(shape).background(z.glass, shape).border(1.dp, z.gridLine, shape).padding(4.dp)) {
+        items.forEach { k ->
+            val on = k == selected
+            Box(
+                Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(if (on) z.accent else Color.Transparent)
+                    .tap { pick(k) }.padding(vertical = 10.dp),
+                contentAlignment = Alignment.Center,
+            ) { T(label(k), 12.sp, 700, if (on) Color.White else z.textSecondary) }
         }
     }
 }
@@ -159,6 +183,10 @@ fun GameScreen(g: GameState) {
                     T("MISTAKES: ${g.mistakes}/${g.mistakeLimit}", 9.sp, 700, spacing = .1.em, modifier = Modifier.alpha(.5f))
                     Spacer(Modifier.height(4.dp))
                     T(clock(g.seconds), 30.sp, 700, spacing = (-.05).em)
+                }
+                Box(Modifier.tap { g.hint() }.padding(8.dp).alpha(if (g.hintsLeft > 0) .6f else .2f)) {
+                    SvgIcon(Ic.HINT, z.textPrimary, 24.dp)
+                    T("${g.hintsLeft}", 9.sp, 700, modifier = Modifier.align(Alignment.TopEnd).offset(6.dp, (-4).dp))
                 }
                 SvgIcon(Ic.UNDO, z.textPrimary, 24.dp, modifier = Modifier.tap { g.undo() }.padding(8.dp).alpha(.6f))
             }
@@ -209,9 +237,14 @@ private fun Cell(g: GameState, r: Int, c: Int, modifier: Modifier) {
     val v = g.current[r][c]; val given = g.puzzle.givens[r][c] != 0
     val sel = g.selected == r * 9 + c
     val wrong = v != 0 && !given && v != g.puzzle.solution[r][c]
+    val s = g.selected; val sr = (s ?: 0) / 9; val sc = (s ?: 0) % 9
+    val peer = s != null && (sr == r || sc == c || (sr / 3 == r / 3 && sc / 3 == c / 3))
+    val same = s != null && v != 0 && v == g.current[sr][sc]
     val bg = when {
         wrong -> Color(0x33D63031)
         sel -> z.selectionBg
+        same -> z.sameNumBg
+        peer -> z.textPrimary.copy(alpha = .04f)
         given -> z.prefilledBg
         else -> Color.Transparent
     }
@@ -285,6 +318,19 @@ fun RecordsScreen(scores: List<Score>, stats: Stats, back: () -> Unit) {
                     val rate = if (stats.started > 0) Math.round(stats.won * 100f / stats.started) else 0
                     Row(Modifier.fillMaxWidth().alpha(.6f), horizontalArrangement = Arrangement.SpaceAround) {
                         T("Wins: ${stats.won}", 12.sp, 700); T("Streak: ${stats.streak}", 12.sp, 700); T("Win Rate: $rate%", 12.sp, 700)
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Difficulty.entries.forEach { d ->
+                            val best = scores.filter { it.difficulty == d }.minOfOrNull { it.seconds }
+                            Column(
+                                Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(Color.Black.copy(alpha = .05f)).padding(vertical = 10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                T(d.label.substringBefore(' ').uppercase(), 8.sp, 700, spacing = .1.em, modifier = Modifier.alpha(.5f))
+                                T(best?.let { "%d:%02d".format(it / 60, it % 60) } ?: "–", 13.sp, 700, family = Mono)
+                            }
+                        }
                     }
                     Spacer(Modifier.height(16.dp))
                     LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(8.dp)) {
