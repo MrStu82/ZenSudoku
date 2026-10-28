@@ -17,7 +17,7 @@ data class ZenColors(
     val hintGlow: Color, val prefilledBg: Color, val selectionBg: Color, val sameNumBg: Color,
 ) {
     /** Row, column and box of the selected cell: a light wash of the theme accent. */
-    val peerBg get() = accent.copy(alpha = .1f)
+    val peerBg get() = accent.copy(alpha = .22f)
 }
 
 val Themes = mapOf(
