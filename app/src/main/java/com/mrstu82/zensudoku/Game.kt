@@ -119,7 +119,7 @@ class GameState(val puzzle: Puzzle, val daily: Boolean = false) {
         fun decode(s: String) = runCatching {
             val p = s.split("|")
             GameState(generate(p[0], Difficulty.valueOf(p[1])), p[2] == "true").apply {
-                p[3].forEachIndexed { i, ch -> current[i / 9][i % 9] = ch - '0' }
+                p[3].forEachIndexed { i, ch -> if (puzzle.givens[i / 9][i % 9] == 0) current[i / 9][i % 9] = ch - '0' }
                 p[4].split(",").forEachIndexed { i, ns -> ns.forEach { notes[i / 9][i % 9].add(it - '0') } }
                 mistakes = p[5].toInt(); seconds = p[6].toInt(); hints = p[7].toInt(); paused = true
             }
