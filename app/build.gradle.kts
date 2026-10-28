@@ -12,8 +12,8 @@ android {
         applicationId = "com.mrstu82.zensudoku"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 3
+        versionName = "1.0.2"
     }
 
     // Keystore lives only on the build host; passwords come from the environment, never the repo.

@@ -211,18 +211,19 @@ private fun Cell(g: GameState, s: Settings, r: Int, c: Int, modifier: Modifier) 
         wrong -> Shu.copy(alpha = .1f + .25f * (1f - ink.value))
         sel -> z.selectionBg
         same -> z.sameNumBg
-        peer -> z.textPrimary.copy(alpha = .04f)
+        peer -> z.peerBg
         given -> z.prefilledBg
         else -> Color.Transparent
     }
     // Single-candidate cells get a soft inner border ("inner clarity").
     val glow = if (s.clarity && cands.size == 1) Modifier.padding(2.dp).border(1.dp, Matcha.copy(alpha = .6f), RoundedCornerShape(3.dp)) else Modifier
     val digit = if (s.large) 24.sp else 20.sp
-    Box(modifier.background(bg).tap { g.tapCell(r * 9 + c) }, contentAlignment = Alignment.Center) {
+    val ring = if (sel) Modifier.border(2.dp, z.accent) else Modifier
+    Box(modifier.background(bg).then(ring).tap { g.tapCell(r * 9 + c) }, contentAlignment = Alignment.Center) {
         Box(Modifier.fillMaxSize().then(glow))
         when {
             v != 0 && given -> T("$v", digit, 800, z.textPrimary)
-            v != 0 -> T("$v", digit, 400, if (wrong) Shu else z.accent, modifier = Modifier.alpha(ink.value).scale(1.15f - .15f * ink.value))
+            v != 0 -> T("$v", digit, if (same) 700 else 400, if (wrong) Shu else z.accent, modifier = Modifier.alpha(ink.value).scale(1.15f - .15f * ink.value))
             // Up to 4 pencil notes, one per quadrant, in entry order.
             g.notes[r][c].isNotEmpty() -> Column(Modifier.fillMaxSize().padding(3.dp)) {
                 val ns = g.notes[r][c].toList()
