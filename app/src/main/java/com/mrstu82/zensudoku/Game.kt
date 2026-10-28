@@ -53,7 +53,7 @@ class GameState(val puzzle: Puzzle, val daily: Boolean = false) {
         snapshot()
         when {
             n == 0 -> { current[r][c] = 0; notes[r][c].clear() }
-            noteMode -> { current[r][c] = 0; if (!notes[r][c].remove(n) && notes[r][c].size < 4) notes[r][c].add(n) }
+            noteMode -> { current[r][c] = 0; if (!notes[r][c].remove(n)) notes[r][c].add(n) }
             else -> {
                 val ok = n == puzzle.solution[r][c]
                 if (!ok) mistakes++
@@ -80,6 +80,14 @@ class GameState(val puzzle: Puzzle, val daily: Boolean = false) {
         val s = singles().ifEmpty { return }
         snapshot()
         s.forEach { i -> current[i / 9][i % 9] = candidates(i / 9, i % 9).single(); notes[i / 9][i % 9].clear() }
+        version++
+    }
+
+    /** Auto-pencil: every empty cell's notes become all its legal candidates; auto-tidy keeps them current. */
+    fun autoPencil() {
+        if (solved || lost) return
+        snapshot()
+        (0 until 81).filter { current[it / 9][it % 9] == 0 }.forEach { i -> notes[i / 9][i % 9].run { clear(); addAll(candidates(i / 9, i % 9)) } }
         version++
     }
 

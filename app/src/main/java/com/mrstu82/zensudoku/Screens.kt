@@ -389,7 +389,7 @@ fun HowToScreen(back: () -> Unit) {
     Page("道", "HOW TO PLAY", back) {
         Lesson("One of each", "Fill every row, column and 3×3 box with 1 to 9, each digit once.") { Mini("53.6.98.7", lit = setOf(2, 4)) }
         Lesson("Choose a cell, then a digit", "Or switch MODE to pick a digit first and tap cells to place it.") { Mini("1.3.5.789", lit = setOf(1)) }
-        Lesson("Notes", "The pencil key writes up to four small notes in a cell.") { Mini("12..5.7.9", notes = mapOf(2 to "3 6", 3 to "4 6", 5 to "3 8")) }
+        Lesson("Notes", "The pencil key writes small notes in a cell; the top pencil fills every empty cell with its candidates.") { Mini("12..5.7.9", notes = mapOf(2 to "3 6", 3 to "4 6", 5 to "3 8")) }
         Lesson("Clarity", "A soft green border marks a cell with only one possible digit; Bloom fills them all.") { Mini("12345.789", clear = 5) }
         Lesson("Gentle help", "The lantern reveals one cell. Mistakes blush and fade; three ends the game unless you change the limit.") {
             Box(Modifier.size(96.dp), contentAlignment = Alignment.Center) { SvgIcon(Ic.HINT, LocalZen.current.textPrimary, 48.dp, stroke = .75f) }

@@ -77,6 +77,7 @@ fun GameScreen(app: ZenApp, g: GameState) {
                     }
                     Row(Modifier.weight(1f), horizontalArrangement = Arrangement.End) {
                         if (s.bloom) SvgIcon(Ic.BLOOM, Matcha, 24.dp, stroke = 1.6f, modifier = Modifier.tap { g.fillSingles() }.padding(8.dp).alpha(if (g.singles().isEmpty()) .25f else .9f))
+                        SvgIcon(Ic.PENCIL, z.textPrimary, 22.dp, stroke = 1.5f, modifier = Modifier.tap { g.autoPencil() }.padding(8.dp).alpha(.6f))
                         SvgIcon(Ic.UNDO, z.textPrimary, 22.dp, stroke = 1.5f, modifier = Modifier.tap { g.undo() }.padding(8.dp).alpha(.6f))
                     }
                 }
@@ -224,12 +225,12 @@ private fun Cell(g: GameState, s: Settings, r: Int, c: Int, modifier: Modifier) 
         when {
             v != 0 && given -> T("$v", digit, 800, z.textPrimary)
             v != 0 -> T("$v", digit, if (same) 700 else 400, if (wrong) Shu else z.accent, modifier = Modifier.alpha(ink.value).scale(1.15f - .15f * ink.value))
-            // Up to 4 pencil notes, one per quadrant, in entry order.
-            g.notes[r][c].isNotEmpty() -> Column(Modifier.fillMaxSize().padding(3.dp)) {
-                val ns = g.notes[r][c].toList()
-                for (qr in 0 until 2) Row(Modifier.weight(1f)) {
-                    for (qc in 0 until 2) Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                        ns.getOrNull(qr * 2 + qc)?.let { T("$it", if (s.large) 12.sp else 10.sp, 500, z.textSecondary) }
+            // Pencil notes on a 3x3 mini-grid: each digit in its own slot (1 top-left .. 9 bottom-right).
+            g.notes[r][c].isNotEmpty() -> Column(Modifier.fillMaxSize().padding(2.dp)) {
+                for (nr in 0 until 3) Row(Modifier.weight(1f)) {
+                    for (nc in 0 until 3) Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                        val n = nr * 3 + nc + 1
+                        if (n in g.notes[r][c]) T("$n", if (s.large) 11.sp else 9.sp, 500, z.textSecondary)
                     }
                 }
             }
